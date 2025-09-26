@@ -1,12 +1,80 @@
-import React from 'react';
-import Image from 'next/image';
-import bg from '@/app/assets/bg4.jpg'; // Ensure this path is correct for your project
+"use client";
+import React, { useRef } from "react";
+import Image from "next/image";
+import { motion, MotionValue, useScroll, useTransform } from "framer-motion";
+import bg from "@/app/assets/bg4.jpg"; // Ensure this path is correct for your project
+import logo from "@/app/assets/logo3.png";
 
-const KeywordTile = ({ text, className = '' }) => {
+interface KeywordTileProps {
+  text: string;
+  className?: string;
+  scrollY: MotionValue<number>;
+  index: number;
+  // Positioning props are no longer mandatory here, but kept for clarity
+  // as the parent sets them via className/style props.
+}
+
+// 2. KeywordTile Component - Implements Parallax/Tilt effect on hover
+const KeywordTile: React.FC<KeywordTileProps> = ({
+  text,
+  className = "",
+  scrollY,
+  index,
+}) => {
+  const tileRef = useRef<HTMLDivElement>(null);
+
+  // Create random scatter transforms for each tile
+  const scatterX = useTransform(
+    scrollY,
+    [0, 500],
+    [0, (Math.random() - 0.5) * 400]
+  );
+  const scatterY = useTransform(
+    scrollY,
+    [0, 500],
+    [0, (Math.random() - 0.5) * 300]
+  );
+  const rotation = useTransform(
+    scrollY,
+    [0, 500],
+    [0, (Math.random() - 0.5) * 45]
+  );
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const tile = tileRef.current;
+    if (!tile) return;
+
+    const rect = tile.getBoundingClientRect();
+    const x = e.clientX - rect.left; // cursor X inside tile
+    const y = e.clientY - rect.top; // cursor Y inside tile
+
+    const moveX = (x - rect.width / 2) / 4; // Adjust divisor (10) for intensity
+    const moveY = (y - rect.height / 2) / 4;
+
+    // Move slightly in the opposite direction of cursor movement for a 3D effect
+    tile.style.transform = `translate3d(${-moveX}px, ${-moveY}px, 0) scale(1.05)`;
+    tile.style.transition = "transform 0.1s ease-out"; // Fast transition for responsiveness
+  };
+
+  const handleMouseLeave = () => {
+    const tile = tileRef.current;
+    if (!tile) return;
+    // Reset position and scale when mouse leaves
+    tile.style.transform = "translate3d(0, 0, 0) scale(1)";
+    tile.style.transition = "transform 0.3s ease-out"; // Slower transition for smooth reset
+  };
   return (
-    <div
-      className={`relative uppercase w-44 px-8 py-12 rounded-lg overflow-hidden
-                         bg-white/4 backdrop-blur-md border border-white/20
+    <motion.div
+      ref={tileRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        x: scatterX,
+        y: scatterY,
+        rotate: rotation,
+      }}
+      className={` uppercase w-44 px-8 py-12 rounded-lg overflow-hidden
+                         bg-white/10 backdrop-blur-md border border-[#00ef8b]/20
                          text-white font-medium text-lg
                          shadow-2xl transform transition-transform duration-300 hover:scale-105
                   ${className}`}
@@ -16,88 +84,88 @@ const KeywordTile = ({ text, className = '' }) => {
       // }}
     >
       {text}
-    </div>
+    </motion.div>
   );
 };
 
 const HeroPage = () => {
-  const keywords = [
-    'NO CODE',
-    'AI AGENT',
-    'SEAMLESS',
-    'ATOMIC',
-    'FLOW DATA',
-    'INSIGHTS',
-    'CODE GEN',
-    'FLY WHEEL',
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollY } = useScroll();
+
+  const tiles = [
+    { text: "Services", className: "absolute top-0 left-64 text-sm" },
+    { text: "Benefits", className: "absolute top-16 left-28 text-sm" },
+    { text: "Partnership?", className: "absolute top-20 left-96 text-sm" },
+    { text: "AI AGENT", className: "absolute top-36 right-60 text-sm" },
+    { text: "Questions?", className: "absolute top-60 left-96 text-sm" },
+    { text: "SEAMLESS", className: "absolute top-80 right-40 text-sm" },
+    { text: "INSIGHTS", className: "absolute bottom-6 left-44 text-sm" },
+    {
+      text: "X",
+      className:
+        "absolute top-44 right-4 text-sm w-12 h-12 flex items-center justify-center",
+    },
   ];
+
   return (
-    <div className="relative h-screen w-full flex items-center justify-between p-8 md:p-16 lg:p-24">
-      {/* Background image */}
-      <Image
-        src={bg}
-        alt="Background"
-        layout="fill" // Use layout="fill" for responsive full-bleed images in Next.js
-        objectFit="cover" // Cover the entire area
-        quality={100} // High quality image
-        className="absolute inset-0"
-      />
+    <div
+      ref={containerRef}
+      className="overflow-hidden bg-black relative h-screen w-full flex items-center justify-between p-8 md:p-16 lg:p-24"
+    >
+      <Image src={logo} alt="" className=" w-48 top-10 absolute " />
 
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/40" />
-      <div className='flex justify-between w-full gap-12'>
-
-      {/* Content Container - Aligned to the left */}
-      <div className="relative z-10 flex-1 text-white"> {/* max-w-2xl to control text width */}
-        {/* White backdrop blur bg */}
-          <h2 className="font-bricolage uppercase font-semibold text-3xl md:text-4xl lg:text-7xl leading-tight mb-4">
-          One Sentence. <br/>Atomic Execution.
+      <div className="absolute top-[10%] left-[2%] w-[250px] h-[250px] bg-[#00ef8b]/40 blur-3xl opacity-100 rounded-full z-0" />
+      <div className="absolute bottom-[10%] right-[4%] w-[200px] h-[200px] bg-[#00ef8b]/60 blur-3xl opacity-100 rounded-full z-0" />
+      <div className="absolute bottom-[50%] right-[28%] w-[150px] h-[150px] bg-[#00ef8b]/50 blur-3xl opacity-100 rounded-full z-0" />
+      <div className="flex items-center justify-between w-full gap-12">
+        {/* Content Container - Aligned to the left */}
+        <div className="relative flex-1 text-white">
+          {" "}
+          {/* max-w-2xl to control text width */}
+          {/* White backdrop blur bg */}
+          <h2
+            className="font-bricolage uppercase font-semibold text-3xl md:text-4xl lg:text-6xl leading-tight mb-4 bg-clip-text text-transparent"
+            style={{
+              backgroundImage: "linear-gradient(to right, #ffffff, #00ef8b)",
+            }}
+          >
+            One Sentence. <br />
+            Atomic Execution.
           </h2>
           <p className="text-white/90 max-w-3xl font-rubik text-base md:text-xl leading-relaxed mb-8">
-            The Flow Actions AI Platform transforms natural language commands into seamless, secure, atomic blockchain transactions.
+            The Flow Actions AI Platform transforms natural language commands
+            into seamless, secure, atomic blockchain transactions.
           </p>
-
           {/* Buttons Container */}
           <div className="flex font-rubik flex-col sm:flex-row gap-4">
             {/* Button 1: Get Started */}
             <button
-              className="relative uppercase px-8 py-3 rounded-lg overflow-hidden
-                         bg-white/4 backdrop-blur-md border border-white/20
-                         text-white font-medium text-lg
+              className="cursor-pointer relative uppercase px-8 py-3 rounded-lg overflow-hidden
+                         bg-gradient-to-r from-white to-[#00ef8b] backdrop-blur-md border border-[#00ef8b]/20
+                          text-black/80 font-medium text-lg
                          shadow-2xl transform transition-transform duration-300 hover:scale-105"
             >
               Get Started
               {/* Optional: Add a subtle overlay for a 'glass' effect if desired */}
               <span className="absolute inset-0 border border-white/20 rounded-lg opacity-0 hover:opacity-100 transition-opacity duration-300"></span>
             </button>
-
-            {/* Button 2: Explore Developer Tools */}
-            <button
-              className="relative uppercase px-8 py-3 rounded-lg overflow-hidden
-                         bg-white/4 backdrop-blur-md border border-white/20
-                         text-white font-medium text-lg
-                         shadow-2xl transform transition-transform duration-300 hover:scale-105"
-            >
-              Explore Developer Tools
-              {/* Optional: Add a subtle overlay for a 'glass' effect if desired */}
-              <span className="absolute inset-0 border border-white/20 rounded-lg opacity-0 hover:opacity-100 transition-opacity duration-300"></span>
-            </button>
           </div>
         </div>
 
-      {/* Keyword Tiles - Right Side Scattered */}
-      <div className="relative z-10 hidden lg:block flex-1 text-center h-96">
-        <KeywordTile text="Services" className="absolute top-0 left-64  text-sm" />
-        <KeywordTile text="Benefits" className="absolute top-2 left-36 text-sm" />
-        <KeywordTile text="Partnership?" className="absolute top-6 left-80 text-sm" />
-        <KeywordTile text="Questions?" className="absolute bottom-16 left-0 text-sm" />
-        <KeywordTile text="AI AGENT" className="absolute top-24 right-60 text-sm" />
-        <KeywordTile text="SEAMLESS" className="absolute bottom-32 right-32 text-sm" />
-        <KeywordTile text="INSIGHTS" className="absolute bottom-8 right-48 text-sm" />
-        <KeywordTile text="X" className="absolute top-32 right-8 text-sm w-12 h-12 flex items-center justify-center" />
+        {/* Keyword Tiles - Right Side Scattered */}
+        <div className="relative z-10 hiddeny-hidden overflow- lg:block flex-1 text-center h-96">
+          {tiles.map((tile, index) => (
+            <KeywordTile
+              key={tile.text}
+              text={tile.text}
+              className={tile.className}
+              scrollY={scrollY}
+              index={index}
+            />
+          ))}
+        </div>
       </div>
-      </div>
-      </div>
+    </div>
   );
 };
 
