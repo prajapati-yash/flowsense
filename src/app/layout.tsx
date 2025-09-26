@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import {  Rubik, Rubik_Mono_One, Bricolage_Grotesque  } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const rubik = Rubik({
+  variable: "--font-rubik",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const rubikMonoOne = Rubik_Mono_One({
+  weight: "400", // Only available weight for Rubik Mono One
+  variable: "--font-rubik-mono-one",
+  subsets: ["latin"],
+});
+
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
   subsets: ["latin"],
 });
 
@@ -25,7 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${rubik.variable} ${rubikMonoOne.variable} ${bricolage.variable} antialiased`}
       >
         {children}
       </body>
