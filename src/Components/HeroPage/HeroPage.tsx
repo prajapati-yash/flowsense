@@ -1,8 +1,9 @@
 import React from 'react';
 import Image from 'next/image';
-import bg from '@/app/assets/bg4.jpg'; // Ensure this path is correct for your project
+import bg from '@/app/assets/bg4.jpg';
+import Header from '@/Components/Header/Header';
 
-const KeywordTile = ({ text, className = '' }) => {
+const KeywordTile = ({ text, className = '' }: { text: string; className?: string }) => {
   return (
     <div
       className={`relative uppercase w-44 px-8 py-12 rounded-lg overflow-hidden
@@ -21,16 +22,6 @@ const KeywordTile = ({ text, className = '' }) => {
 };
 
 const HeroPage = () => {
-  const keywords = [
-    'NO CODE',
-    'AI AGENT',
-    'SEAMLESS',
-    'ATOMIC',
-    'FLOW DATA',
-    'INSIGHTS',
-    'CODE GEN',
-    'FLY WHEEL',
-  ];
   return (
     <div className="relative h-screen w-full flex items-center justify-between p-8 md:p-16 lg:p-24">
       {/* Background image */}
@@ -45,6 +36,9 @@ const HeroPage = () => {
 
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/40" />
+
+      {/* Header with wallet integration */}
+      <Header />
       <div className='flex justify-between w-full gap-12'>
 
       {/* Content Container - Aligned to the left */}
