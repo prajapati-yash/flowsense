@@ -1,19 +1,25 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BsAirplane } from "react-icons/bs";
 import { BiPaperPlane } from "react-icons/bi";
 import NetworkSwitcher from "../NetworkSwitcher/NetworkSwitcher";
 import WalletConnectionWrapper from "../WalletConnection/WalletConnectionWrapper";
+import TransactionPreview from "../TransactionStatus/TransactionPreview";
+import ExecutionLoader from "../TransactionStatus/ExecutionLoader";
+import TransactionResult from "../TransactionStatus/TransactionResult";
 import logo from "@/app/assets/fs2.png"
 import Image from "next/image";
 import Link from "next/link";
+import { useFlowSenseAgent, AgentResponse } from "@/hooks/useFlowSenseAgent";
+import { TransactionPlan } from "@/services/transaction-router";
 
 interface Message {
   id: string;
   text: string;
   isUser: boolean;
   timestamp: Date;
+  type?: 'text' | 'transaction_preview' | 'transaction_status' | 'transaction_result' | 'error';
+  data?: unknown;
 }
 
 interface Chat {
@@ -28,8 +34,19 @@ const GetStartedMain = () => {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingTransactionPlan, setPendingTransactionPlan] = useState<TransactionPlan | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // FlowSense AI Agent
+  const {
+    agentState,
+    processUserInput,
+    executeTransaction,
+    resetAgent,
+    getAgentIntroduction,
+    validateWalletConnection
+  } = useFlowSenseAgent();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -51,28 +68,85 @@ const GetStartedMain = () => {
     setChats((prev) => [newChat, ...prev]);
     setCurrentChatId(newChat.id);
     setInputText("");
+
+    // Add introduction message
+    setTimeout(() => {
+      const intro = getAgentIntroduction();
+      const introMessage = createMessageFromResponse(intro);
+      setChats((prev) =>
+        prev.map((chat) =>
+          chat.id === newChat.id
+            ? { ...chat, messages: [introMessage] }
+            : chat
+        )
+      );
+    }, 500);
+  };
+
+  const addMessage = (message: Message) => {
+    setChats((prev) =>
+      prev.map((chat) =>
+        chat.id === currentChatId
+          ? {
+              ...chat,
+              messages: [...chat.messages, message],
+              title:
+                chat.messages.length === 0
+                  ? message.text.slice(0, 30) + "..."
+                  : chat.title,
+            }
+          : chat
+      )
+    );
+  };
+
+  const createMessageFromResponse = (response: AgentResponse): Message => {
+    return {
+      id: Date.now().toString(),
+      text: response.content,
+      isUser: false,
+      timestamp: response.timestamp,
+      type: response.type,
+      data: response.data
+    };
   };
 
   const handleSendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
+    if (!inputText.trim() || isLoading || pendingTransactionPlan) return;
 
+    const userInput = inputText.trim();
+
+    // Create user message
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: inputText,
+      text: userInput,
       isUser: true,
       timestamp: new Date(),
     };
 
     // If no current chat, create one
-    if (!currentChatId) {
-      createNewChat();
+    let chatId = currentChatId;
+    if (!chatId) {
+      const newChatId = Date.now().toString();
+      const newChat: Chat = {
+        id: newChatId,
+        title: userInput.slice(0, 30) + (userInput.length > 30 ? "..." : ""),
+        messages: [],
+        createdAt: new Date(),
+      };
+      setChats((prev) => [newChat, ...prev]);
+      setCurrentChatId(newChatId);
+      chatId = newChatId;
     }
 
-    // Add user message
+    // Add user message to the specific chat
     setChats((prev) =>
       prev.map((chat) =>
-        chat.id === currentChatId
-          ? { ...chat, messages: [...chat.messages, userMessage] }
+        chat.id === chatId
+          ? {
+              ...chat,
+              messages: [...chat.messages, userMessage],
+            }
           : chat
       )
     );
@@ -80,34 +154,152 @@ const GetStartedMain = () => {
     setInputText("");
     setIsLoading(true);
 
-    // Simulate AI response (replace with actual AI call)
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: `I understand you're asking about: "${inputText}". This is a simulated response from the Flow Actions AI agent. In a real implementation, this would connect to your blockchain AI service to provide atomic transaction solutions.`,
+    try {
+      // Check wallet connection first
+      const walletStatus = await validateWalletConnection();
+      if (!walletStatus.connected) {
+        const errorMessage = createMessageFromResponse({
+          type: 'error',
+          content: `❌ ${walletStatus.message}\n\nPlease connect your wallet using the button in the top right corner.`,
+          timestamp: new Date()
+        });
+
+        setChats((prev) =>
+          prev.map((chat) =>
+            chat.id === chatId
+              ? {
+                  ...chat,
+                  messages: [...chat.messages, errorMessage],
+                }
+              : chat
+          )
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // Process user input with AI agent
+      const agentResponse = await processUserInput(userInput);
+      const aiMessage = createMessageFromResponse(agentResponse);
+
+      // Store transaction plan if provided
+      if (agentResponse.type === 'transaction_preview' && agentResponse.data) {
+        setPendingTransactionPlan(agentResponse.data);
+      }
+
+      // Add AI message to the specific chat
+      setChats((prev) =>
+        prev.map((chat) =>
+          chat.id === chatId
+            ? {
+                ...chat,
+                messages: [...chat.messages, aiMessage],
+              }
+            : chat
+        )
+      );
+
+      // Add wallet warning if applicable
+      if (walletStatus.message) {
+        const warningMessage = createMessageFromResponse({
+          type: 'text',
+          content: walletStatus.message,
+          timestamp: new Date()
+        });
+
+        setChats((prev) =>
+          prev.map((chat) =>
+            chat.id === chatId
+              ? {
+                  ...chat,
+                  messages: [...chat.messages, warningMessage],
+                }
+              : chat
+          )
+        );
+      }
+
+    } catch (error: unknown) {
+      const errorMessage = createMessageFromResponse({
+        type: 'error',
+        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date()
+      });
+
+      setChats((prev) =>
+        prev.map((chat) =>
+          chat.id === chatId
+            ? {
+                ...chat,
+                messages: [...chat.messages, errorMessage],
+              }
+            : chat
+        )
+      );
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleConfirmTransaction = async (plan: TransactionPlan) => {
+    setIsLoading(true);
+    setPendingTransactionPlan(null);
+
+    try {
+      // Add status message to show execution has started
+      const statusMessage: Message = {
+        id: Date.now().toString() + '_status',
+        text: "🔄 Executing transaction...",
         isUser: false,
         timestamp: new Date(),
+        type: 'transaction_status',
+        data: { status: 'pending' }
       };
+      addMessage(statusMessage);
 
+      // Execute transaction
+      const result = await executeTransaction(plan);
+      const resultMessage = createMessageFromResponse(result);
+
+      // Remove the status message and add result
       setChats((prev) =>
         prev.map((chat) =>
           chat.id === currentChatId
             ? {
                 ...chat,
-                messages: [...chat.messages, aiMessage],
-                title:
-                  chat.messages.length === 0
-                    ? inputText.slice(0, 30) + "..."
-                    : chat.title,
+                messages: chat.messages.filter(msg => msg.id !== statusMessage.id).concat(resultMessage)
               }
             : chat
         )
       );
-      setIsLoading(false);
-    }, 1500);
+
+    } catch (error: unknown) {
+      const errorMessage = createMessageFromResponse({
+        type: 'error',
+        content: `Transaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date()
+      });
+      addMessage(errorMessage);
+    }
+
+    setIsLoading(false);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleCancelTransaction = () => {
+    setPendingTransactionPlan(null);
+    resetAgent();
+
+    const cancelMessage: Message = {
+      id: Date.now().toString(),
+      text: "Transaction cancelled. You can start a new request anytime!",
+      isUser: false,
+      timestamp: new Date(),
+      type: 'text'
+    };
+    addMessage(cancelMessage);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -207,24 +399,62 @@ const GetStartedMain = () => {
                     message.isUser ? "justify-end" : "justify-start"
                   }`}
                 >
-                  <div
-                    className={`max-w-3xl px-6 py-4 rounded-2xl ${
-                      message.isUser
-                        ? "bg-gradient-to-r from-[#00ef8b] to-white text-black"
-                        : "bg-white/10 backdrop-blur-md border border-[#00ef8b]/20 text-white"
-                    }`}
-                  >
-                    <div className="font-rubik text-base leading-relaxed whitespace-pre-wrap">
-                      {message.text}
+                  {message.isUser ? (
+                    // User message
+                    <div className="max-w-3xl px-6 py-4 rounded-2xl bg-gradient-to-r from-[#00ef8b] to-white text-black">
+                      <div className="font-rubik text-base leading-relaxed whitespace-pre-wrap">
+                        {message.text}
+                      </div>
+                      <div className="text-xs mt-2 text-black/60">
+                        {message.timestamp.toLocaleTimeString()}
+                      </div>
                     </div>
-                    <div
-                      className={`text-xs mt-2 ${
-                        message.isUser ? "text-black/60" : "text-white/50"
-                      }`}
-                    >
-                      {message.timestamp.toLocaleTimeString()}
+                  ) : (
+                    // AI Agent message
+                    <div className="max-w-4xl w-full">
+                      {message.type === 'transaction_preview' && message.data ? (
+                        <div className="space-y-4">
+                          <div className="bg-white/10 backdrop-blur-md border border-[#00ef8b]/20 text-white px-6 py-4 rounded-2xl">
+                            <div className="font-rubik text-base leading-relaxed whitespace-pre-wrap">
+                              {message.text}
+                            </div>
+                            <div className="text-xs mt-2 text-white/50">
+                              {message.timestamp.toLocaleTimeString()}
+                            </div>
+                          </div>
+                          <TransactionPreview
+                            plan={message.data}
+                            onConfirm={() => handleConfirmTransaction(message.data)}
+                            onCancel={handleCancelTransaction}
+                            isLoading={isLoading}
+                          />
+                        </div>
+                      ) : message.type === 'transaction_status' ? (
+                        <ExecutionLoader
+                          status={message.data || agentState.transactionStatus || { status: 'pending' }}
+                          txId={agentState.transactionResult?.txId}
+                        />
+                      ) : message.type === 'transaction_result' && message.data ? (
+                        <TransactionResult
+                          result={message.data}
+                          onNewTransaction={() => {
+                            resetAgent();
+                            setPendingTransactionPlan(null);
+                          }}
+                        />
+                      ) : (
+                        // Regular text message
+                        <div className="bg-white/10 backdrop-blur-md border border-[#00ef8b]/20 text-white px-6 py-4 rounded-2xl">
+                          <div className="font-rubik text-base leading-relaxed whitespace-pre-wrap">
+                            {message.text}
+                          </div>
+                          <div className="text-xs mt-2 text-white/50">
+                            {message.timestamp.toLocaleTimeString()}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -271,7 +501,13 @@ const GetStartedMain = () => {
                     ></div>
                   </div>
                   <span className="text-white/70 text-sm">
-                    AI is thinking...
+                    {agentState.isProcessing
+                      ? `FlowSense AI: ${agentState.currentStep === 'parsing' ? 'Understanding your request...'
+                        : agentState.currentStep === 'routing' ? 'Creating transaction plan...'
+                        : agentState.currentStep === 'executing' ? 'Executing transaction...'
+                        : agentState.currentStep === 'previewing' ? 'Preparing transaction preview...'
+                        : 'Processing...'}`
+                      : 'FlowSense AI is thinking...'}
                   </span>
                 </div>
               </div>
@@ -283,13 +519,19 @@ const GetStartedMain = () => {
         {/* Input Area */}
         <div className="px-3 py-3 border-t border-[#00ef8b]/20 bg-black/30 backdrop-blur-md">
           <div className="max-w-4xl mx-auto">
-            <div className="relative">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendMessage();
+              }}
+              className="relative"
+            >
               <textarea
                 ref={inputRef}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask me anything about blockchain transactions..."
+                onKeyDown={handleKeyDown}
+                placeholder={pendingTransactionPlan ? "Transaction ready for confirmation..." : "Try: 'Transfer 10 FLOW to 0x123abc...' or 'Send 5 FLOW to Alice immediately'"}
                 className="w-full px-6 py-4 pr-16 font-rubik bg-white/10 backdrop-blur-md border border-[#00ef8b]/20 rounded-2xl text-white placeholder-white/50 resize-none focus:outline-none focus:border-[#00ef8b]/40 transition-all duration-300"
                 rows={1}
                 style={{
@@ -298,32 +540,19 @@ const GetStartedMain = () => {
                 }}
               />
               <motion.button
-                onClick={handleSendMessage}
-                disabled={!inputText.trim() || isLoading}
-                whileHover={{ scale: inputText.trim() ? 1.05 : 1 }}
-                whileTap={{ scale: inputText.trim() ? 0.95 : 1 }}
+                type="submit"
+                disabled={!inputText.trim() || isLoading || !!pendingTransactionPlan}
+                whileHover={{ scale: inputText.trim() && !isLoading && !pendingTransactionPlan ? 1.05 : 1 }}
+                whileTap={{ scale: inputText.trim() && !isLoading && !pendingTransactionPlan ? 0.95 : 1 }}
                 className={`absolute right-2 top-2 bottom-2 size-[42px] rounded-xl flex items-center justify-center transition-all duration-300 ${
-                  inputText.trim() && !isLoading
+                  inputText.trim() && !isLoading && !pendingTransactionPlan
                     ? "bg-gradient-to-r from-[#00ef8b] to-white text-black shadow-lg hover:shadow-xl"
                     : "bg-white/20 text-white/50 cursor-not-allowed"
                 }`}
               >
-                {/* <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                  />
-                </svg> */}
                 <BiPaperPlane className="size-6"/>
               </motion.button>
-            </div>
+            </form>
             <p className="text-white/50 text-xs font-rubik text-center">
               Press Enter to send, Shift+Enter for new line
             </p>
