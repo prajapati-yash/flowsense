@@ -2,8 +2,8 @@
 import React, { useRef } from "react";
 import Image from "next/image";
 import { motion, MotionValue, useScroll, useTransform } from "framer-motion";
-import bg from "@/app/assets/bg4.jpg"; // Ensure this path is correct for your project
 import logo from "@/app/assets/logo3.png";
+import Link from "next/link";
 
 interface KeywordTileProps {
   text: string;
@@ -139,7 +139,8 @@ const HeroPage = () => {
           {/* Buttons Container */}
           <div className="flex font-rubik flex-col sm:flex-row gap-4">
             {/* Button 1: Get Started */}
-            <button
+            <Link
+             href="/get-started"
               className="cursor-pointer relative uppercase px-8 py-3 rounded-lg overflow-hidden
                          bg-gradient-to-r from-white to-[#00ef8b] backdrop-blur-md border border-[#00ef8b]/20
                           text-black/80 font-medium text-lg
@@ -148,7 +149,7 @@ const HeroPage = () => {
               Get Started
               {/* Optional: Add a subtle overlay for a 'glass' effect if desired */}
               <span className="absolute inset-0 border border-white/20 rounded-lg opacity-0 hover:opacity-100 transition-opacity duration-300"></span>
-            </button>
+            </Link>
           </div>
         </div>
 
