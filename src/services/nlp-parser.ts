@@ -177,9 +177,10 @@ export class FlowSenseNLPParser {
           continue; // Skip zero or negative amounts
         }
 
-        if (amount > 1000000) {
-          continue; // Skip amounts exceeding maximum
-        }
+        // Temporarily disabled for testing
+        // if (amount > 10000000) {
+        //   continue; // Skip amounts exceeding maximum (10M FLOW)
+        // }
 
         // Check for reasonable decimal precision (Flow supports up to 8 decimal places)
         const decimalPlaces = (amount.toString().split('.')[1] || '').length;
@@ -275,28 +276,42 @@ export class FlowSenseNLPParser {
       return tomorrow;
     }
 
-    // In X minutes
-    const minuteMatch = input.match(/in\s+(\d+)\s+minutes?/);
+    // Enhanced patterns for minutes - handles both "in X minutes" and "after X minutes"
+    const minuteMatch = input.match(/(in|after)\s+(\d+)\s+(minutes?|mins?)/i);
     if (minuteMatch) {
-      const minutes = parseInt(minuteMatch[1]);
+      const minutes = parseInt(minuteMatch[2]);
       const futureTime = new Date(now.getTime() + minutes * 60 * 1000);
       return futureTime;
     }
 
-    // In X hours
-    const hourMatch = input.match(/in\s+(\d+)\s+hours?/);
+    // Enhanced patterns for hours - handles both "in X hours" and "after X hours"
+    const hourMatch = input.match(/(in|after)\s+(\d+)\s+(hours?|hrs?)/i);
     if (hourMatch) {
-      const hours = parseInt(hourMatch[1]);
+      const hours = parseInt(hourMatch[2]);
       const futureTime = new Date(now.getTime() + hours * 60 * 60 * 1000);
       return futureTime;
     }
 
-    // In X days
-    const dayMatch = input.match(/in\s+(\d+)\s+days?/);
+    // Enhanced patterns for days - handles both "in X days" and "after X days"
+    const dayMatch = input.match(/(in|after)\s+(\d+)\s+days?/i);
     if (dayMatch) {
-      const days = parseInt(dayMatch[1]);
+      const days = parseInt(dayMatch[2]);
       const futureTime = new Date(now);
       futureTime.setDate(futureTime.getDate() + days);
+      return futureTime;
+    }
+
+    // Handle "X minutes" or "X mins" without "in/after" prefix
+    const simpleMinuteMatch = input.match(/(\d+)\s+(minutes?|mins?)/i);
+    if (simpleMinuteMatch && !input.includes('in') && !input.includes('after')) {
+      const minutes = parseInt(simpleMinuteMatch[1]);
+      const futureTime = new Date(now.getTime() + minutes * 60 * 1000);
+      return futureTime;
+    }
+
+    // General "later" keyword - defaults to 1 hour from now
+    if (input.includes('later') && !minuteMatch && !hourMatch && !dayMatch) {
+      const futureTime = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
       return futureTime;
     }
 

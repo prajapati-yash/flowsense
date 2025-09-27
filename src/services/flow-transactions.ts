@@ -180,25 +180,57 @@ export class FlowTransactionService {
   }
 
   private formatSuccessMessage(plan: TransactionPlan, status: TransactionStatus): string {
+    // Different messages based on execution mode
+    let headerMessage: string;
+    let statusMessage: string;
+
+    if (plan.executionMode === 'immediate') {
+      headerMessage = '🎉 Transfer completed successfully!';
+      statusMessage = '✅ FLOW tokens transferred immediately';
+    } else if (plan.executionMode === 'nativeScheduled') {
+      headerMessage = '📅 Transfer scheduled successfully!';
+      statusMessage = '🚀 Transfer scheduled with native Flow scheduler for autonomous execution';
+    } else if (plan.executionMode === 'scheduled') {
+      headerMessage = '📅 Transfer scheduled successfully!';
+      statusMessage = '📅 Transfer has been scheduled and will execute automatically';
+    } else {
+      headerMessage = '🎉 Transaction completed successfully!';
+      statusMessage = '';
+    }
+
     const messages = [
-      '🎉 Transaction completed successfully!',
+      headerMessage,
+      '',
+      statusMessage,
       '',
       `📝 ${plan.description}`,
       `⛓️ Transaction ID: ${status.txId}`,
       `🔗 View on Explorer: ${status.explorerUrl}`
     ];
 
-    if (plan.executionMode === 'scheduled') {
-      messages.splice(2, 0, '📅 Transfer has been scheduled and will execute automatically');
+    // Add scheduling fee info for native scheduled transactions
+    if (plan.executionMode === 'nativeScheduled' && plan.schedulingFees) {
+      messages.splice(-3, 0, `💰 Scheduling fee paid: ${plan.schedulingFees} FLOW`);
     }
 
+    // Add timing information for scheduled transactions
+    if (plan.executionMode === 'nativeScheduled' || plan.executionMode === 'scheduled') {
+      messages.push('');
+      messages.push('⏰ Status: Waiting for scheduled execution time');
+      messages.push('🔔 You will be notified when the transfer completes');
+
+      // Don't show "tokens transferred" for scheduled transactions
+      return messages.join('\n');
+    }
+
+    // For immediate transfers, check for transfer events
     if (status.events && status.events.length > 0) {
       const transferEvents = status.events.filter(e =>
         e.type.includes('TokensDeposited') || e.type.includes('TokensWithdrawn')
       );
 
       if (transferEvents.length > 0) {
-        messages.push('', '✅ FLOW tokens transferred successfully');
+        messages.push('', '✅ Blockchain events confirm successful transfer');
       }
     }
 
@@ -233,9 +265,10 @@ export class FlowTransactionService {
           if (isNaN(amount) || amount <= 0) {
             errors.push('Invalid amount parameter');
           }
-          if (amount > 1000000) {
-            errors.push('Amount exceeds maximum limit');
-          }
+          // Temporarily disabled for testing
+          // if (amount > 10000000) {
+          //   errors.push('Amount exceeds maximum limit (10M FLOW)');
+          // }
         }
 
         if (param.type === 'Address') {

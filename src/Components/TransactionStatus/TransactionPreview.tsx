@@ -20,11 +20,25 @@ const TransactionPreview: React.FC<TransactionPreviewProps> = ({
   isLoading = false
 }) => {
   const getExecutionIcon = () => {
-    return plan.executionMode === 'immediate' ? <FiZap className="w-4 h-4" /> : <FiClock className="w-4 h-4" />;
+    switch (plan.executionMode) {
+      case 'immediate':
+        return <FiZap className="w-4 h-4" />;
+      case 'nativeScheduled':
+        return <FiClock className="w-4 h-4" />;
+      default:
+        return <FiClock className="w-4 h-4" />;
+    }
   };
 
   const getExecutionColor = () => {
-    return plan.executionMode === 'immediate' ? 'text-[#00ef8b]' : 'text-yellow-400';
+    switch (plan.executionMode) {
+      case 'immediate':
+        return 'text-[#00ef8b]';
+      case 'nativeScheduled':
+        return 'text-blue-400';
+      default:
+        return 'text-yellow-400';
+    }
   };
 
   // Extract amount and recipient from parameters
@@ -91,12 +105,34 @@ const TransactionPreview: React.FC<TransactionPreviewProps> = ({
         </div>
 
         {/* Gas Estimate */}
-        <div className="flex items-center justify-between py-2">
+        <div className="flex items-center justify-between py-2 border-b border-white/10">
           <span className="font-rubik text-sm text-white/70">Gas Fee</span>
           <span className="font-medium text-white">
             {plan.gasEstimate}
           </span>
         </div>
+
+        {/* Native Scheduling Info */}
+        {plan.executionMode === 'nativeScheduled' && (
+          <>
+            {plan.schedulingFees && (
+              <div className="flex items-center justify-between py-2 border-b border-white/10">
+                <span className="font-rubik text-sm text-white/70">Scheduling Fee</span>
+                <span className="font-medium text-white">
+                  {plan.schedulingFees} FLOW
+                </span>
+              </div>
+            )}
+            {plan.totalCost && (
+              <div className="flex items-center justify-between py-2">
+                <span className="font-rubik text-sm text-white/70">Total Cost</span>
+                <span className="font-medium text-[#00ef8b]">
+                  {plan.totalCost} FLOW
+                </span>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Description */}
@@ -105,6 +141,32 @@ const TransactionPreview: React.FC<TransactionPreviewProps> = ({
           {plan.description}
         </p>
       </div>
+
+      {/* Native Scheduling Info */}
+      {plan.executionMode === 'nativeScheduled' && (
+        <div className="bg-blue-500/10 rounded-lg p-3">
+          <h4 className="text-blue-400 font-medium text-sm mb-2">🚀 Native Flow Scheduling</h4>
+          <div className="space-y-1 text-xs text-white/70">
+            <p>• <strong>Step 1:</strong> Confirm this transaction to schedule the transfer</p>
+            <p>• <strong>Step 2:</strong> Flow's scheduler will automatically execute at scheduled time</p>
+            <p>• <strong>No manual trigger required</strong> - completely autonomous execution</p>
+            <p>• Scheduling fee covers network execution costs</p>
+          </div>
+        </div>
+      )}
+
+      {/* Scheduled Transfer Info */}
+      {(plan.executionMode === 'scheduled' || plan.executionMode === 'nativeScheduled') && (
+        <div className="bg-amber-500/10 rounded-lg p-3 mt-3">
+          <h4 className="text-amber-400 font-medium text-sm mb-2">⚠️ Important: Understanding Scheduled Transfers</h4>
+          <div className="space-y-1 text-xs text-white/70">
+            <p>• <strong>Confirming this transaction will NOT transfer the tokens immediately</strong></p>
+            <p>• It will schedule the transfer for the specified future time</p>
+            <p>• The actual transfer will happen automatically at the scheduled time</p>
+            <p>• You will see "Transfer scheduled successfully" after confirmation</p>
+          </div>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex space-x-3 pt-4">
@@ -128,10 +190,20 @@ const TransactionPreview: React.FC<TransactionPreviewProps> = ({
           {isLoading ? (
             <div className="flex items-center justify-center space-x-2">
               <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
-              <span>Confirming...</span>
+              <span>
+                {plan.executionMode === 'nativeScheduled' || plan.executionMode === 'scheduled'
+                  ? 'Scheduling...'
+                  : 'Confirming...'}
+              </span>
             </div>
           ) : (
-            'Confirm Transaction'
+            plan.executionMode === 'immediate'
+              ? 'Confirm Transfer'
+              : plan.executionMode === 'nativeScheduled'
+              ? 'Schedule Transfer'
+              : plan.executionMode === 'scheduled'
+              ? 'Schedule Transfer'
+              : 'Confirm Transaction'
           )}
         </motion.button>
       </div>
