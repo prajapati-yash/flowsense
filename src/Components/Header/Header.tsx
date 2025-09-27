@@ -3,7 +3,7 @@
 import WalletConnectionWrapper from '@/Components/WalletConnection/WalletConnectionWrapper'
 import NetworkSwitcher from '@/Components/NetworkSwitcher/NetworkSwitcher'
 import Image from 'next/image'
-import logo from "@/app/assets/logo3.png"
+import logo from "@/app/assets/fs.png"
 interface HeaderProps {
   className?: string
 }

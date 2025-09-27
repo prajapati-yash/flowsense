@@ -261,7 +261,7 @@ export default function WalletConnection({
       <button
         onClick={handleConnect}
         disabled={isLoading}
-        className="px-6 py-3 rounded-lg bg-gradient-to-r from-[#00ef8b] to-white text-black font-rubik font-medium text-sm shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100"
+        className="px-6 py-3 cursor-pointer rounded-lg bg-gradient-to-r from-[#00ef8b] to-white text-black font-rubik font-medium text-sm shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100"
       >
         {isLoading ? "Connecting..." : "Connect Wallet"}
       </button>

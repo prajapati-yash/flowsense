@@ -4,7 +4,7 @@ import { RiTwitterXLine } from "react-icons/ri";
 
 const Footer = () => {
   return (
-    <footer className="relative w-full h-[50vh] bg-black overflow-hidden flex flex-col justify-between text-white">
+    <footer className="relative w-full h-[60vh] bg-black overflow-hidden flex flex-col justify-between text-white">
       {/* Grid Background with top fade */}
       <div className="absolute inset-0">
         <div
@@ -24,13 +24,13 @@ const Footer = () => {
       {/* Main Content - Centered */}
       <div className="relative z-10 flex flex-col items-center justify-center flex-1 gap-6">
         <h2 className="text-2xl md:text-3xl font-viga uppercase text-[#00ef8b] text-center">
-          Connect with Creators
+        Built with ❤️ by
         </h2>
 
-        <div className="flex flex-col gap-2 items-center font-rubik justify-center">
+        <div className="flex flex-col gap-2 items-center font-rubik justify-center bg-white/10 border border-[#00ef8b]/40 px-12 py-4 rounded-xl">
           {/* User 1 */}
           <div className="flex items-center gap-3">
-            <span className="text-white/80 text-sm md:text-base">Yash Prajapati</span>
+            <span className="text-[#00ef8b] text-sm md:text-base">Yash Prajapati:</span>
             <a
               href="https://x.com/yashonchainx"
               target="_blank"
@@ -43,7 +43,7 @@ const Footer = () => {
 
           {/* User 2 */}
           <div className="flex items-center gap-3">
-            <span className="text-white/80 text-sm md:text-base">Hiral Vala</span>
+            <span className="text-[#00ef8b] text-sm md:text-base">Hiral Vala:</span>
             <a
               href="https://x.com/hiralvala563"
               target="_blank"
@@ -59,7 +59,7 @@ const Footer = () => {
       {/* Copyright - Bottom */}
       <div className="relative z-10 text-center mb-4">
         <p className="text-white/50 text-sm font-rubik">
-          &copy; {new Date().getFullYear()} Flow Actions AI. All rights reserved.
+          &copy; {new Date().getFullYear()} FlowSense. All rights reserved.
         </p>
       </div>
     </footer>

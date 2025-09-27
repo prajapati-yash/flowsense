@@ -24,6 +24,7 @@ export default function FloatingWalletCircle({
   const [isHovered, setIsHovered] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [forceDisconnected, setForceDisconnected] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
   const currentUser = useFlowCurrentUser();
   const { showToast } = useToast();
   const circleRef = useRef<HTMLDivElement>(null);
@@ -39,12 +40,12 @@ export default function FloatingWalletCircle({
   // Transform values for subtle 3D rotation based on mouse position
   const rotateX = useTransform(
     springY,
-    [0, window?.innerHeight || 800],
+    [0, typeof window !== 'undefined' ? window.innerHeight : 800],
     [5, -5]
   );
   const rotateY = useTransform(
     springX,
-    [0, window?.innerWidth || 1200],
+    [0, typeof window !== 'undefined' ? window.innerWidth : 1200],
     [-5, 5]
   );
 
@@ -58,6 +59,22 @@ export default function FloatingWalletCircle({
     mouseX.set(centerX - 48); // Half circle width (96px / 2)
     mouseY.set(bottomY - 48); // Half circle height (96px / 2)
   }, [mouseX, mouseY]);
+
+  // Track scroll position and control visibility
+  useEffect(() => {
+    if (!isClient) return;
+
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      const viewportHeight = window.innerHeight;
+
+      // Hide component when scrolled past first 100vh
+      setIsVisible(scrollY < viewportHeight);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isClient]);
 
   // Track mouse movement
   useEffect(() => {
@@ -201,7 +218,7 @@ export default function FloatingWalletCircle({
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  if (!isClient) {
+  if (!isClient || !isVisible) {
     return null;
   }
 

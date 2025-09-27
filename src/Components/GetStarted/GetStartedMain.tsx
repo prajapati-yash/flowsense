@@ -3,6 +3,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BsAirplane } from "react-icons/bs";
 import { BiPaperPlane } from "react-icons/bi";
+import NetworkSwitcher from "../NetworkSwitcher/NetworkSwitcher";
+import WalletConnectionWrapper from "../WalletConnection/WalletConnectionWrapper";
+import logo from "@/app/assets/fs2.png"
+import Image from "next/image";
+import Link from "next/link";
 
 interface Message {
   id: string;
@@ -123,7 +128,7 @@ const GetStartedMain = () => {
             onClick={createNewChat}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full font-viga px-6 py-3 rounded-lg bg-gradient-to-r from-[#00ef8b] to-white text-black font-medium text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+            className="w-full cursor-pointer font-viga px-6 py-3 rounded-lg bg-gradient-to-r from-[#00ef8b] to-white text-black font-medium text-lg shadow-lg hover:shadow-xl transition-all duration-300"
           >
             + New Chat
           </motion.button>
@@ -164,18 +169,29 @@ const GetStartedMain = () => {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="py-3 px-6 border-b border-[#00ef8b]/20 bg-black/30 backdrop-blur-md">
+        <div className="py-3 px-6 border-b border-[#00ef8b]/20 bg-black/30 backdrop-blur-md flex justify-between">
+        <div className="flex items-center">
+        <Link href="/" passHref>
+          <Image src={logo} alt="" className="w-20"/>
+          </Link>
+        <div>
           <h1
             className="text-2xl font-viga font-semibold bg-clip-text text-transparent"
             style={{
               backgroundImage: "linear-gradient(to right, #ffffff, #00ef8b)",
             }}
           >
-            Flow Sense
+            FlowSense
           </h1>
           <p className="font-rubik text-white/70 mt-1">
             Ask me anything about blockchain transactions and smart contracts
           </p>
+          </div>
+          </div>
+          <div className="flex items-center gap-4">
+          <NetworkSwitcher className="wallet-controls-network" />
+          <WalletConnectionWrapper className="wallet-controls-connection" />
+        </div>
         </div>
 
         {/* Messages */}
@@ -214,10 +230,10 @@ const GetStartedMain = () => {
             </AnimatePresence>
           ) : (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-r from-[#00ef8b] to-white rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <span className="text-2xl text-black">⚡</span>
-                </div>
+              <div className="text-center flex flex-col justify-center items-center">
+              <Link href="/" passHref className="">
+          <Image src={logo} alt="" className="w-20"/>
+          </Link>
                 <h3
                   className="text-2xl font-viga font-medium mb-2 bg-clip-text text-transparent"
                   style={{
@@ -225,7 +241,7 @@ const GetStartedMain = () => {
                       "linear-gradient(to right, #ffffff, #00ef8b)",
                   }}
                 >
-                  Welcome to Flow Sense
+                  Welcome to FlowSense
                 </h3>
                 <p className="text-white/70 font-rubik max-w-md">
                   Start a conversation by typing your question below. I can help

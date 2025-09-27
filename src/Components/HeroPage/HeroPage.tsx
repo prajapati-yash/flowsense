@@ -1,8 +1,6 @@
 "use client";
 import React, { useRef } from "react";
-import Image from "next/image";
 import { motion, MotionValue, useScroll, useTransform } from "framer-motion";
-import logo from "@/app/assets/logo3.png";
 import Link from "next/link";
 import FloatingWalletCircle from "@/Components/3DCircle/FloatingWalletCircle";
 
@@ -11,8 +9,6 @@ interface KeywordTileProps {
   className?: string;
   scrollY: MotionValue<number>;
   index: number;
-  // Positioning props are no longer mandatory here, but kept for clarity
-  // as the parent sets them via className/style props.
 }
 
 // 2. KeywordTile Component - Implements Parallax/Tilt effect on hover
@@ -94,15 +90,15 @@ const HeroPage = () => {
   const { scrollY } = useScroll();
 
   const tiles = [
-    { text: "Services", className: "absolute top-0 left-64 text-sm" },
-    { text: "Benefits", className: "absolute top-16 left-28 text-sm" },
-    { text: "Partnership?", className: "absolute top-20 left-96 text-sm" },
-    { text: "AI AGENT", className: "absolute top-36 right-60 text-sm" },
-    { text: "Questions?", className: "absolute top-60 left-96 text-sm" },
-    { text: "SEAMLESS", className: "absolute top-80 right-40 text-sm" },
-    { text: "INSIGHTS", className: "absolute bottom-6 left-44 text-sm" },
+    { text: "Automation", className: "absolute top-0 left-64 text-sm" },
+    { text: "Intent", className: "absolute top-16 left-28 text-sm" },
+    { text: "Scheduled", className: "absolute top-20 left-96 text-sm" },
+    { text: "DeFi", className: "absolute top-36 right-60 text-sm" },
+    { text: "Natural", className: "absolute top-60 left-96 text-sm" },
+    { text: "Actions", className: "absolute top-80 right-40 text-sm" },
+    { text: "Flow", className: "absolute bottom-6 left-44 text-sm" },
     {
-      text: "X",
+      text: "Cadence",
       className:
         "absolute top-44 right-4 text-sm w-12 h-12 flex items-center justify-center",
     },
@@ -134,7 +130,7 @@ const HeroPage = () => {
             Atomic Execution.
           </h2>
           <p className="text-white/90 max-w-3xl font-rubik text-base md:text-xl leading-relaxed mb-8">
-            The Flow Actions AI Platform transforms natural language commands
+            The FlowSense Platform transforms natural language commands
             into seamless, secure, atomic blockchain transactions.
           </p>
           {/* Buttons Container */}

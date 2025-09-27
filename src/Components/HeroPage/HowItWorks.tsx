@@ -1,6 +1,37 @@
 "use client";
 import React, { useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, MotionValue  } from "framer-motion";
+
+interface StepCardProps {
+  title: string;
+  description: string;
+  index: number;
+  scrollYProgress: MotionValue<number>;
+}
+
+const StepCard: React.FC<StepCardProps> = ({ title, description, index, scrollYProgress }) => {
+  const start = index * 0.25; // Each card gets its scroll segment
+  const end = start + 0.3;
+
+  // ✅ Hooks are now inside a proper React component
+  const y = useTransform(scrollYProgress, [start, end], [50, 0]);
+  const opacity = useTransform(scrollYProgress, [start, end], [0, 1]);
+
+  return (
+    <motion.div
+      style={{ y, opacity }}
+      className="bg-[#071b22]/40 backdrop-blur-xl border border-[#00ef8b]/20 rounded-2xl p-6 hover:border-[#00ef8b]/50 transition-all duration-300 cursor-pointer"
+    >
+      <h3 className="text-2xl uppercase font-rubik font-semibold text-[#00ef8b] mb-3">
+        {title}
+      </h3>
+      <p className="text-white/90 font-rubik text-lg leading-relaxed">
+        {description}
+      </p>
+      <div className="mt-4 w-16 h-1 bg-gradient-to-r from-[#00ef8b] to-[#01cd78] rounded-full"></div>
+    </motion.div>
+  );
+};
 
 const HowItWorks = () => {
   const containerRef = useRef(null);
@@ -9,24 +40,24 @@ const HowItWorks = () => {
     offset: ["start center", "end center"],
   });
 
-  const whyChooseUsData = [
+  const HowItWorks = [
     {
-      title: "Time Saver",
-      description: "Save hours every week on research & writing.",
+      title: "Natural Language Intent",
+      description: "Users submit complex DeFi goals as simple text prompts to the LLM interface.",
     },
     {
-      title: "Never Miss Trends",
-      description: "Never miss trending topics—agent monitors and drafts on time.",
+      title: "AI-Driven Action Sequencing",
+      description: "The platform's AI automatically recognizes the intent and translates it into a sequence of Flow Actions (e.g., Swap, Stake).",
     },
     {
-      title: "Quality Assured",
-      description: "Human-in-the-loop ensures quality and brand voice.",
+      title: "Scheduled Transaction Creation",
+      description: "A verifiable, time-locked Cadence scheduled transaction is automatically created to execute the Action sequence at the user's predetermined time.",
     },
     {
-      title: "Team Focused",
-      description: "Built for teams: creators, marketers, and SEO specialists.",
+      title: "Automated On-Chain Execution",
+      description: "Flow's native infrastructure ensures the sophisticated workflow executes reliably and precisely on schedule, without manual intervention.",
     },
-  ];
+];
 
   return (
     <div
@@ -72,28 +103,15 @@ const HowItWorks = () => {
             How IT <span className="text-[#00ef8b]">Works?</span>
           </motion.h2>
 
-          {whyChooseUsData.map((item, index) => {
-            const start = index * 0.25; // Each card gets a scroll segment
-            const end = start + 0.3;
-            const y = useTransform(scrollYProgress, [start, end], [50, 0]);
-            const opacity = useTransform(scrollYProgress, [start, end], [0, 1]);
-
-            return (
-              <motion.div
-                key={index}
-                style={{ y, opacity }}
-                className="bg-[#071b22]/40 backdrop-blur-xl border border-[#00ef8b]/20 rounded-2xl p-6 hover:border-[#1aa9da]/50 transition-all duration-300 cursor-pointer"
-              >
-                <h3 className="text-2xl uppercase font-rubik font-semibold text-[#00ef8b] mb-3">
-                  {item.title}
-                </h3>
-                <p className="text-white/90 font-rubik text-lg leading-relaxed">
-                  {item.description}
-                </p>
-                <div className="mt-4 w-16 h-1 bg-gradient-to-r from-[#00ef8b] to-[#01cd78] rounded-full"></div>
-              </motion.div>
-            );
-          })}
+          {HowItWorks.map((step, index) => (
+            <StepCard
+              key={index}
+              title={step.title}
+              description={step.description}
+              index={index}
+              scrollYProgress={scrollYProgress}
+            />
+          ))}
         </div>
       </div>
     </div>
