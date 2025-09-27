@@ -1,0 +1,34 @@
+{
+	"networks": {
+		"emulator": "127.0.0.1:3569",
+		"mainnet": "access.mainnet.nodes.onflow.org:9000",
+		"testnet": "access.devnet.nodes.onflow.org:9000"
+	},
+	"accounts": {
+		"emulator-account": {
+			"address": "f8d6e0586b0a20c7",
+			"key": "YOUR_EMULATOR_PRIVATE_KEY_HERE"
+		},
+		"testnet-account": {
+			"address": "YOUR_TESTNET_ADDRESS_HERE",
+			"key": {
+				"type": "hex",
+				"index": 0,
+				"signatureAlgorithm": "ECDSA_secp256k1",
+				"hashAlgorithm": "SHA2_256",
+				"privateKey": "YOUR_TESTNET_PRIVATE_KEY_HERE"
+			}
+		}
+	},
+	"contracts": {
+		"FlowSenseActionsFinal": "./cadence/contracts/FlowSenseActionsFinal.cdc"
+	},
+	"deployments": {
+		"emulator": {
+			"emulator-account": ["FlowSenseActionsFinal"]
+		},
+		"testnet": {
+			"testnet-account": ["FlowSenseActionsFinal"]
+		}
+	}
+}
