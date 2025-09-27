@@ -98,9 +98,12 @@ const HowItWorks = () => {
             initial={{ opacity: 0, y: -30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-5xl uppercase font-viga font-bold text-white mb-8"
+            className="font-viga uppercase font-semibold text-3xl md:text-4xl lg:text-6xl leading-tight bg-clip-text text-transparent mb-8"
+            style={{
+              backgroundImage: "linear-gradient(to right, #ffffff, #00ef8b)",
+            }}
           >
-            How IT <span className="text-[#00ef8b]">Works?</span>
+            How IT Works?
           </motion.h2>
 
           {HowItWorks.map((step, index) => (
