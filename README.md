@@ -2,7 +2,7 @@
 
 🚀 **One Sentence. Atomic Execution.**
 
-FlowSense is an AI-driven blockchain platform that bridges natural language interaction with automated cryptocurrency operations on Flow blockchain. Transform complex DeFi workflows into simple human expressions like *"Send 100 FLOW to Alice tomorrow"* or *"Use my claimed rewards to buy and stake more tokens"*.
+FlowSense is an AI-driven blockchain platform built natively for the Flow ecosystem, bridging natural language interaction with automated cryptocurrency operations. Transform complex Flow DeFi workflows into simple human expressions like *"Send 100 FLOW to Alice tomorrow"* or *"Use my claimed rewards to buy and stake more tokens"*.
 
 ## 🎯 What FlowSense Achieves
 
@@ -10,11 +10,11 @@ FlowSense demonstrates the future of blockchain interaction where AI agents can 
 
 ### ✨ Core Capabilities
 
-- **🔍 Intelligent Discovery**: AI agents can discover available blockchain actions dynamically
-- **🧠 Natural Language Processing**: Convert user intents into structured blockchain operations
-- **⚡ Flexible Execution**: Support both immediate transfers and scheduled operations
-- **💰 Real Asset Movement**: Actual FLOW token transfers with comprehensive validation
-- **🔗 Composable Actions**: Modular framework supporting complex workflow composition
+- **🔍 Intelligent Discovery**: AI agents can discover available Flow blockchain actions dynamically
+- **🧠 Natural Language Processing**: Convert user intents into structured Flow operations
+- **⚡ Flexible Execution**: Support both immediate transfers and scheduled operations on Flow
+- **💰 Real Asset Movement**: Actual FLOW token transfers with Flow's comprehensive validation
+- **🔗 Composable Actions**: Modular framework leveraging Flow's resource-oriented programming
 - **📊 Advanced Analytics**: Complete user statistics, intent tracking, and execution history
 
 ## 🏗️ Architecture
@@ -93,12 +93,12 @@ const txId = await fcl.mutate({
 ## ✨ Features
 
 ### Core Capabilities
-- 🤖 **AI-Powered Intent Recognition** - Natural language to blockchain actions
-- ⚡ **Dual Execution Modes** - Immediate (≤5s) vs Scheduled (>5s) execution
-- 🔗 **Action Chaining** - Intelligent workflow composition for complex operations
-- 🛡️ **Comprehensive Validation** - Balance checks, receiver verification, timing validation
-- 🌐 **Flow Native** - Built specifically for Flow blockchain ecosystem
-- 💎 **No-Code DeFi** - Accessible to everyone, no technical knowledge required
+- 🤖 **AI-Powered Intent Recognition** - Natural language to Flow blockchain actions
+- ⚡ **Dual Execution Modes** - Immediate (≤5s) vs Scheduled (>5s) execution on Flow
+- 🔗 **Action Chaining** - Intelligent workflow composition leveraging Flow's capabilities
+- 🛡️ **Comprehensive Validation** - Flow-native balance checks, receiver verification, timing validation
+- 🌐 **Flow Ecosystem Native** - Built specifically for Flow blockchain and Cadence smart contracts
+- 💎 **No-Code Flow DeFi** - Making Flow DeFi accessible to everyone, no technical knowledge required
 
 ### Advanced Features
 - 📊 **User Analytics** - Track intents, execution history, and statistics
