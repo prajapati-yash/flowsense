@@ -111,19 +111,19 @@ const txId = await fcl.mutate({
 
 ### Immediate Transfers
 ```
-"Send 50 FLOW to Bob for lunch"
+"Send 50 FLOW to 0x123"
 → Immediate execution via FlowSenseActionsFinal
 
-"Transfer 1000 FLOW to my savings wallet"
+"Transfer 1000 FLOW to 0x987"
 → Instant FLOW movement with validation
 ```
 
 ### Scheduled Operations
 ```
-"Send 100 FLOW to Alice tomorrow"
+"Send 100 FLOW to 0x12 tomorrow"
 → Scheduled execution for future timestamp
 
-"Pay my rent of 500 FLOW on the 1st of next month"
+"Transfer 50 FLOW on the 1st of next month"
 → Scheduled transfer with specific timing
 ```
 
@@ -244,50 +244,18 @@ flow scripts execute cadence/scripts/get_user_stats.cdc \
 
 ## 🔮 Future Roadmap
 
-### Phase 2: Advanced DeFi Actions (Q2 2025)
-- **SwapToken Action**: Integrate with DEX protocols (Increment, BloctoSwap)
-- **LendingAction**: Money market integration (Flowty, etc.)
-- **StakingAction**: Liquid staking protocol integration
-- **LiquidityAction**: LP token management and farming
-- **GovernanceAction**: DAO voting and proposal management
+### Advanced DeFi & Cross-Protocol Workflows
+- Token swaps, lending, staking, liquidity management, and DAO governance  
+- Workflow automation with multi-action chaining, conditional execution, and portfolio strategies (stop-loss, take-profit, rebalancing)  
 
-### Phase 3: Cross-Protocol Workflows (Q3 2025)
-- **Multi-Action Chaining**: Complex workflow automation
-- **Conditional Execution**: If-then logic for advanced strategies
-- **Risk Management**: Stop-loss and take-profit automation
-- **Portfolio Rebalancing**: Automated asset allocation
+### AI-Powered Enhancements
+- Natural language and voice interfaces for complex multi-step instructions  
+- Predictive analytics, AI-suggested optimizations, and real-time market intelligence  
 
-### Phase 4: AI Enhancement (Q4 2025)
-- **Advanced NLP**: Support for complex multi-step instructions
-- **Predictive Analytics**: AI-suggested optimizations
-- **Voice Interface**: Natural speech interaction
-- **Market Intelligence**: Real-time strategy recommendations
-
-### Phase 5: Ecosystem Expansion (2026)
-- **Cross-Chain Bridge**: Ethereum, Bitcoin, other chains
-- **NFT Integration**: Collection management and trading
-- **Social Trading**: Copy successful strategies
-- **DeFi Aggregation**: Best execution across all protocols
-
-## 🎛️ Scalability & Architecture
-
-### Technical Scalability
-- **Modular Design**: Easy addition of new action types
-- **Event-Driven**: Efficient tracking and analytics
-- **Stateless Execution**: Horizontal scaling capabilities
-- **Caching Layer**: Query optimization for large datasets
-
-### Economic Scalability
-- **Gas Optimization**: Minimal transaction costs
-- **Batch Processing**: Multiple actions in single transaction
-- **Lazy Execution**: Scheduled operations reduce immediate gas
-- **Revenue Sharing**: Sustainable tokenomics model
-
-### Developer Experience
-- **SDK Development**: Easy integration for other projects
-- **Plugin Architecture**: Third-party action development
-- **API Gateway**: RESTful interface for external systems
-- **Documentation Portal**: Comprehensive guides and tutorials
+### Ecosystem Expansion
+- Cross-chain support (Ethereum, Bitcoin, others) with DeFi aggregation for best execution  
+- NFT collection management and trading  
+- Social trading with copyable strategies  
 
 ## 🏆 Innovation & Impact
 
@@ -301,32 +269,6 @@ FlowSense represents the next evolution of blockchain interaction:
 
 **FlowSense serves as the foundation for mainstream blockchain adoption through AI-powered automation.**
 
-## 📊 Analytics & Monitoring
-
-### User Metrics
-- Intent submission rates
-- Execution success rates
-- Popular action types
-- User retention analytics
-
-### System Metrics
-- Transaction throughput
-- Error rates and types
-- Response time analytics
-- Network health monitoring
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 🙏 Acknowledgments
 
 - **Flow Blockchain** - For the innovative blockchain infrastructure and developer tools
@@ -337,7 +279,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Twitter**: [@yashonchainx](https://x.com/yashonchainx) | [@hiralvala563](https://x.com/hiralvala563)
 - **Email**: [Contact through GitHub Issues]
-- **Discord**: Flow Community #flowsense
 
 ---
 
