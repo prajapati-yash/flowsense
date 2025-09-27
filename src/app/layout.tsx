@@ -29,6 +29,9 @@ const viga = Viga({
 export const metadata: Metadata = {
   title: "FlowSense",
   description: "Flow blockchain wallet integration platform",
+  icons: {
+    icon: "/favicon.png", // Path inside /public
+  },
 };
 
 export default function RootLayout({
