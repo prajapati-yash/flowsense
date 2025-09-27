@@ -40,24 +40,24 @@ const HowItWorks = () => {
     offset: ["start center", "end center"],
   });
 
-  const HowItWorks = [
-    {
-      title: "Natural Language Intent",
-      description: "Users submit complex DeFi goals as simple text prompts to the LLM interface.",
-    },
-    {
-      title: "AI-Driven Action Sequencing",
-      description: "The platform's AI automatically recognizes the intent and translates it into a sequence of Flow Actions (e.g., Swap, Stake).",
-    },
-    {
-      title: "Scheduled Transaction Creation",
-      description: "A verifiable, time-locked Cadence scheduled transaction is automatically created to execute the Action sequence at the user's predetermined time.",
-    },
-    {
-      title: "Automated On-Chain Execution",
-      description: "Flow's native infrastructure ensures the sophisticated workflow executes reliably and precisely on schedule, without manual intervention.",
-    },
-];
+    const HowItWorks = [
+      {
+        title: "Intelligent Action Preparation",
+        description: "The FlowSense AI Agent queries the Flow blockchain using dedicated scripts to dynamically discover all available actions and functions, creating a real-time, up-to-date registry for intent processing.",
+      },
+      {
+        title: "Natural Language Intent",
+        description: "Users submit complex DeFi goals as simple text prompts (e.g., 'Claim my staking rewards and swap them for USDC'), which the AI processes for the correct action, amount, and timing.",
+      },
+      {
+        title: "Comprehensive Validation & Signing",
+        description: "The AI validates the request (balance, receiver address, timing) and constructs the final structured transaction for the user to securely sign with their wallet.",
+      },
+      {
+        title: "Atomic On-Chain Execution",
+        description: "The signed intent is submitted and executed instantly or stored for scheduled execution. Flow's native validation ensures real asset movement is atomic and precise.",
+      },
+    ];
 
   return (
     <div

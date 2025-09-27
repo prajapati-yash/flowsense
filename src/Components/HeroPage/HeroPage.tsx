@@ -98,7 +98,7 @@ const HeroPage = () => {
     { text: "Actions", className: "absolute top-80 right-40 text-sm" },
     { text: "Flow", className: "absolute bottom-6 left-44 text-sm" },
     {
-      text: "Cadence",
+      text: "Discovery",
       className:
         "absolute top-44 right-4 text-sm w-12 h-12 flex items-center justify-center",
     },
