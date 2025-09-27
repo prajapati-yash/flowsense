@@ -4,6 +4,7 @@ import Image from "next/image";
 import { motion, MotionValue, useScroll, useTransform } from "framer-motion";
 import logo from "@/app/assets/logo3.png";
 import Link from "next/link";
+import FloatingWalletCircle from "@/Components/3DCircle/FloatingWalletCircle";
 
 interface KeywordTileProps {
   text: string;
@@ -112,7 +113,7 @@ const HeroPage = () => {
       ref={containerRef}
       className="overflow-hidden bg-black relative h-screen w-full flex items-center justify-between p-8 md:p-16 lg:p-24"
     >
-      <Image src={logo} alt="" className=" w-48 top-10 absolute " />
+      {/* <Image src={logo} alt="" className=" w-48 top-10 absolute " /> */}
 
       <div className="absolute top-[10%] left-[2%] w-[250px] h-[250px] bg-[#00ef8b]/40 blur-3xl opacity-100 rounded-full z-0" />
       <div className="absolute bottom-[10%] right-[4%] w-[200px] h-[200px] bg-[#00ef8b]/60 blur-3xl opacity-100 rounded-full z-0" />
@@ -124,7 +125,7 @@ const HeroPage = () => {
           {/* max-w-2xl to control text width */}
           {/* White backdrop blur bg */}
           <h2
-            className="font-bricolage uppercase font-semibold text-3xl md:text-4xl lg:text-6xl leading-tight mb-4 bg-clip-text text-transparent"
+            className="font-viga uppercase font-semibold text-3xl md:text-4xl lg:text-6xl leading-tight mb-4 bg-clip-text text-transparent"
             style={{
               backgroundImage: "linear-gradient(to right, #ffffff, #00ef8b)",
             }}
@@ -137,10 +138,10 @@ const HeroPage = () => {
             into seamless, secure, atomic blockchain transactions.
           </p>
           {/* Buttons Container */}
-          <div className="flex font-rubik flex-col sm:flex-row gap-4">
+          <div className="flex font-viga flex-col sm:flex-row gap-4">
             {/* Button 1: Get Started */}
             <Link
-             href="/get-started"
+              href="/get-started"
               className="cursor-pointer relative uppercase px-8 py-3 rounded-lg overflow-hidden
                          bg-gradient-to-r from-white to-[#00ef8b] backdrop-blur-md border border-[#00ef8b]/20
                           text-black/80 font-medium text-lg
@@ -166,6 +167,9 @@ const HeroPage = () => {
           ))}
         </div>
       </div>
+
+      {/* 3D Floating Wallet Circle */}
+      <FloatingWalletCircle />
     </div>
   );
 };

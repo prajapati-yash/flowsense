@@ -11,6 +11,7 @@
   --font-rubik: "Rubik", sans-serif;
   --font-rubik-mono-one: "Rubik Mono One", monospace;
   --font-bricolage: "Bricolage Grotesque", sans-serif;
+  --font-viga: var(--font-viga), sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,4 +25,40 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Custom Scrollbar Styles */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #00ef8b rgba(255, 255, 255, 0.1);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #00ef8b, rgba(0, 239, 139, 0.8));
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #00ef8b, #ffffff);
+  box-shadow: 0 0 8px rgba(0, 239, 139, 0.4);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:active {
+  background: #00ef8b;
+}
+
+/* Firefox scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #00ef8b rgba(255, 255, 255, 0.1);
 }

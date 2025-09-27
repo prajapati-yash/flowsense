@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import {  Rubik, Rubik_Mono_One, Bricolage_Grotesque  } from "next/font/google";
+import {  Rubik, Rubik_Mono_One, Bricolage_Grotesque, Viga   } from "next/font/google";
 import "./globals.css";
 import FlowProvider from "@/Components/Providers/FlowProvider";
 import ToastProvider from "@/Components/Toast/ToastProvider";
-import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
+// import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 
 const rubik = Rubik({
   variable: "--font-rubik",
@@ -20,6 +20,11 @@ const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
   subsets: ["latin"],
 });
+const viga = Viga({
+  weight: "400", // Only available weight
+  variable: "--font-viga",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
   title: "FlowSense",
@@ -34,17 +39,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${rubik.variable} ${rubikMonoOne.variable} ${bricolage.variable} antialiased`}
+        className={`${rubik.variable} ${rubikMonoOne.variable} ${bricolage.variable} ${viga.variable} antialiased`}
       >
         <FlowProvider>
           <ToastProvider>
             {children}
-        <ProgressBar
+        {/* <ProgressBar
         height="4px"
         color="#00ef8b"
         options={{ showSpinner: false }}
         shallowRouting
-      />
+      /> */}
           </ToastProvider>
         </FlowProvider>
       </body>

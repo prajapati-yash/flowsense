@@ -2,21 +2,18 @@
 
 import WalletConnectionWrapper from '@/Components/WalletConnection/WalletConnectionWrapper'
 import NetworkSwitcher from '@/Components/NetworkSwitcher/NetworkSwitcher'
-
+import Image from 'next/image'
+import logo from "@/app/assets/logo3.png"
 interface HeaderProps {
   className?: string
 }
 
 export default function Header({ className = '' }: HeaderProps) {
   return (
-    <header className={`absolute top-0 left-0 right-0 z-20 p-6 ${className}`}>
+    <header className={`absolute top-0 left-0 right-0 z-20 py-6 px-8 md:px-16 lg:px-24 ${className}`}>
       <div className="flex justify-between items-center">
         {/* Logo/Brand */}
-        <div className="flex items-center">
-          <h1 className="text-white font-bricolage text-2xl font-bold">
-            FlowSense
-          </h1>
-        </div>
+        <Image src={logo} alt="" className=" w-48  " />
 
         {/* Wallet Controls */}
         <div className="flex items-center gap-4">

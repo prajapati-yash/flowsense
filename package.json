@@ -14,9 +14,9 @@
     "@onflow/types": "^1.4.2",
     "framer-motion": "^12.23.22",
     "next": "15.5.4",
-    "next-nprogress-bar": "^2.4.7",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "react-icons": "^5.5.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
