@@ -311,11 +311,10 @@ access(all) contract FlowSenseActionsFinal {
 
     // NATIVE SCHEDULED TRANSACTIONS SUPPORT
     // Transaction Handler Resource for Native Flow Scheduling
-    // Simplified version without interface conformance until we understand the exact API
     access(all) resource FlowSenseTransferHandler {
 
         // Execute scheduled transfer when triggered by Flow scheduler
-        access(all) fun executeTransaction(id: UInt64, data: AnyStruct?) {
+        access(FlowTransactionScheduler.Execute) fun executeTransaction(id: UInt64, data: AnyStruct?) {
             // Validate and extract transfer data
             if let transferData = data as? ScheduledTransferData {
                 // Log execution start

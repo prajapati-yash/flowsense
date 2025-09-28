@@ -187,12 +187,9 @@ export class FlowTransactionService {
     if (plan.executionMode === 'immediate') {
       headerMessage = '🎉 Transfer completed successfully!';
       statusMessage = '✅ FLOW tokens transferred immediately';
-    } else if (plan.executionMode === 'nativeScheduled') {
-      headerMessage = '📅 Transfer scheduled successfully!';
-      statusMessage = '🚀 Transfer scheduled with native Flow scheduler for autonomous execution';
     } else if (plan.executionMode === 'scheduled') {
       headerMessage = '📅 Transfer scheduled successfully!';
-      statusMessage = '📅 Transfer has been scheduled and will execute automatically';
+      statusMessage = '🚀 Transfer scheduled with Flow scheduler for autonomous execution';
     } else {
       headerMessage = '🎉 Transaction completed successfully!';
       statusMessage = '';
@@ -208,13 +205,8 @@ export class FlowTransactionService {
       `🔗 View on Explorer: ${status.explorerUrl}`
     ];
 
-    // Add scheduling fee info for native scheduled transactions
-    if (plan.executionMode === 'nativeScheduled' && plan.schedulingFees) {
-      messages.splice(-3, 0, `💰 Scheduling fee paid: ${plan.schedulingFees} FLOW`);
-    }
-
     // Add timing information for scheduled transactions
-    if (plan.executionMode === 'nativeScheduled' || plan.executionMode === 'scheduled') {
+    if (plan.executionMode === 'scheduled') {
       messages.push('');
       messages.push('⏰ Status: Waiting for scheduled execution time');
       messages.push('🔔 You will be notified when the transfer completes');
