@@ -19,7 +19,7 @@ export interface AgentState {
 export interface AgentResponse {
   type: 'text' | 'transaction_preview' | 'transaction_status' | 'transaction_result' | 'error';
   content: string;
-  data?: any;
+  data?: TransactionPlan | TransactionResult | unknown;
   timestamp: Date;
 }
 
@@ -229,17 +229,18 @@ export const useFlowSenseAgent = () => {
         timestamp: new Date()
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setAgentState(prev => ({
         ...prev,
         isProcessing: false,
         currentStep: 'idle',
-        error: error.message
+        error: errorMessage
       }));
 
       return {
         type: 'error',
-        content: `Sorry, I encountered an error: ${error.message}`,
+        content: `Sorry, I encountered an error: ${errorMessage}`,
         timestamp: new Date()
       };
     }
@@ -291,17 +292,18 @@ export const useFlowSenseAgent = () => {
         };
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setAgentState(prev => ({
         ...prev,
         isProcessing: false,
         currentStep: 'idle',
-        error: error.message
+        error: errorMessage
       }));
 
       return {
         type: 'error',
-        content: `Transaction execution failed: ${error.message}`,
+        content: `Transaction execution failed: ${errorMessage}`,
         timestamp: new Date()
       };
     }
@@ -374,7 +376,7 @@ export const useFlowSenseAgent = () => {
       }
 
       return { connected: true };
-    } catch (error) {
+    } catch {
       return {
         connected: false,
         message: "Unable to verify wallet connection"

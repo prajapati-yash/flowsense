@@ -6,12 +6,13 @@ import NetworkSwitcher from "../NetworkSwitcher/NetworkSwitcher";
 import WalletConnectionWrapper from "../WalletConnection/WalletConnectionWrapper";
 import TransactionPreview from "../TransactionStatus/TransactionPreview";
 import ExecutionLoader from "../TransactionStatus/ExecutionLoader";
-import TransactionResult from "../TransactionStatus/TransactionResult";
+import TransactionResultComponent from "../TransactionStatus/TransactionResult";
 import logo from "@/app/assets/fs2.png"
 import Image from "next/image";
 import Link from "next/link";
 import { useFlowSenseAgent, AgentResponse } from "@/hooks/useFlowSenseAgent";
 import { TransactionPlan } from "@/services/transaction-router";
+import { TransactionResult, TransactionStatus } from "@/services/flow-transactions";
 
 interface Message {
   id: string;
@@ -184,7 +185,7 @@ const GetStartedMain = () => {
 
       // Store transaction plan if provided
       if (agentResponse.type === 'transaction_preview' && agentResponse.data) {
-        setPendingTransactionPlan(agentResponse.data);
+        setPendingTransactionPlan(agentResponse.data as TransactionPlan);
       }
 
       // Add AI message to the specific chat
@@ -423,20 +424,20 @@ const GetStartedMain = () => {
                             </div>
                           </div>
                           <TransactionPreview
-                            plan={message.data}
-                            onConfirm={() => handleConfirmTransaction(message.data)}
+                            plan={message.data as TransactionPlan}
+                            onConfirm={() => handleConfirmTransaction(message.data as TransactionPlan)}
                             onCancel={handleCancelTransaction}
                             isLoading={isLoading}
                           />
                         </div>
                       ) : message.type === 'transaction_status' ? (
                         <ExecutionLoader
-                          status={message.data || agentState.transactionStatus || { status: 'pending' }}
+                          status={(message.data as TransactionStatus) || agentState.transactionStatus || { status: 'pending' } as TransactionStatus}
                           txId={agentState.transactionResult?.txId}
                         />
                       ) : message.type === 'transaction_result' && message.data ? (
-                        <TransactionResult
-                          result={message.data}
+                        <TransactionResultComponent
+                          result={message.data as TransactionResult}
                           onNewTransaction={() => {
                             resetAgent();
                             setPendingTransactionPlan(null);

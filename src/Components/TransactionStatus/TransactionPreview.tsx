@@ -42,8 +42,8 @@ const TransactionPreview: React.FC<TransactionPreviewProps> = ({
   };
 
   // Extract amount and recipient from parameters
-  const amount = plan.parameters.find(p => p.type === 'UFix64')?.value || '0';
-  const recipient = plan.parameters.find(p => p.type === 'Address')?.value || '';
+  const amount = String(plan.parameters.find(p => p.type === 'UFix64')?.value || '0');
+  const recipient = String(plan.parameters.find(p => p.type === 'Address')?.value || '');
 
   return (
     <motion.div
@@ -148,7 +148,7 @@ const TransactionPreview: React.FC<TransactionPreviewProps> = ({
           <h4 className="text-blue-400 font-medium text-sm mb-2">🚀 Native Flow Scheduling</h4>
           <div className="space-y-1 text-xs text-white/70">
             <p>• <strong>Step 1:</strong> Confirm this transaction to schedule the transfer</p>
-            <p>• <strong>Step 2:</strong> Flow's scheduler will automatically execute at scheduled time</p>
+            <p>• <strong>Step 2:</strong> Flow&apos;s scheduler will automatically execute at scheduled time</p>
             <p>• <strong>No manual trigger required</strong> - completely autonomous execution</p>
             <p>• Scheduling fee covers network execution costs</p>
           </div>
@@ -163,7 +163,7 @@ const TransactionPreview: React.FC<TransactionPreviewProps> = ({
             <p>• <strong>Confirming this transaction will NOT transfer the tokens immediately</strong></p>
             <p>• It will schedule the transfer for the specified future time</p>
             <p>• The actual transfer will happen automatically at the scheduled time</p>
-            <p>• You will see "Transfer scheduled successfully" after confirmation</p>
+            <p>• You will see &quot;Transfer scheduled successfully&quot; after confirmation</p>
           </div>
         </div>
       )}

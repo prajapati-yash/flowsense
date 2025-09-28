@@ -3,7 +3,23 @@
 
 import * as fcl from '@onflow/fcl';
 import * as t from '@onflow/types';
-import { TransactionPlan } from './transaction-router';
+import { TransactionPlan, TransactionParameter } from './transaction-router';
+
+export interface FlowEvent {
+  type: string;
+  transactionId: string;
+  transactionIndex: number;
+  eventIndex: number;
+  data: Record<string, unknown>;
+}
+
+export interface FCLTransactionStatus {
+  status: number;
+  statusCode: number;
+  errorMessage?: string;
+  events?: FlowEvent[];
+  blockId?: string;
+}
 
 export interface TransactionStatus {
   status: 'pending' | 'executing' | 'sealing' | 'success' | 'failed';
@@ -11,7 +27,7 @@ export interface TransactionStatus {
   errorMessage?: string;
   explorerUrl?: string;
   blockHeight?: number;
-  events?: any[];
+  events?: FlowEvent[];
 }
 
 export interface TransactionResult {
@@ -89,31 +105,29 @@ export class FlowTransactionService {
         };
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         status: {
           status: 'failed',
-          errorMessage: error.message || 'Unknown error occurred'
+          errorMessage: error instanceof Error ? error.message : 'Unknown error occurred'
         },
         message: this.formatErrorMessage(error)
       };
     }
   }
 
-  private convertParametersToFCL(parameters: any[]): any[] {
+  private convertParametersToFCL(parameters: TransactionParameter[]): unknown[] {
     return parameters.map(param => {
       switch (param.type) {
         case 'String':
-          return fcl.arg(param.value, t.String);
+          return fcl.arg(String(param.value), t.String);
         case 'Address':
-          return fcl.arg(param.value, t.Address);
+          return fcl.arg(String(param.value), t.Address);
         case 'UFix64':
-          return fcl.arg(param.value, t.UFix64);
-        case 'UInt64':
-          return fcl.arg(param.value, t.UInt64);
+          return fcl.arg(String(param.value), t.UFix64);
         case 'Bool':
-          return fcl.arg(param.value, t.Bool);
+          return fcl.arg(Boolean(param.value), t.Bool);
         default:
           throw new Error(`Unsupported parameter type: ${param.type}`);
       }
@@ -124,7 +138,7 @@ export class FlowTransactionService {
     try {
       // Subscribe to transaction status
       return new Promise((resolve) => {
-        const unsub = fcl.tx(txId).subscribe((txStatus: any) => {
+        const unsub = fcl.tx(txId).subscribe((txStatus: FCLTransactionStatus) => {
           const status: TransactionStatus = {
             status: this.mapFCLStatus(txStatus.status),
             txId,
@@ -158,11 +172,11 @@ export class FlowTransactionService {
         }, 60000);
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         status: 'failed',
         txId,
-        errorMessage: error.message || 'Failed to monitor transaction'
+        errorMessage: error instanceof Error ? error.message : 'Failed to monitor transaction'
       };
     }
   }
@@ -261,7 +275,7 @@ export class FlowTransactionService {
 
         // Validate specific parameter types
         if (param.type === 'UFix64') {
-          const amount = parseFloat(param.value);
+          const amount = parseFloat(String(param.value));
           if (isNaN(amount) || amount <= 0) {
             errors.push('Invalid amount parameter');
           }
@@ -272,7 +286,7 @@ export class FlowTransactionService {
         }
 
         if (param.type === 'Address') {
-          if (!this.isValidFlowAddress(param.value)) {
+          if (!this.isValidFlowAddress(String(param.value))) {
             errors.push('Invalid address parameter');
           }
         }
@@ -311,10 +325,10 @@ export class FlowTransactionService {
     return true;
   }
 
-  private formatErrorMessage(error: any): string {
+  private formatErrorMessage(error: unknown): string {
     let errorMsg = 'Transaction failed';
 
-    if (error.message) {
+    if (error instanceof Error && error.message) {
       // Common error patterns and user-friendly messages
       if (error.message.includes('insufficient balance')) {
         errorMsg = '❌ Insufficient FLOW balance for this transaction';
@@ -389,13 +403,13 @@ export class FlowTransactionService {
       } else {
         return { valid: false, message: 'Address cannot receive FLOW tokens' };
       }
-    } catch (error) {
+    } catch {
       return { valid: false, message: 'Invalid address format' };
     }
   }
 
   // Helper method to get transaction by ID
-  public async getTransactionResult(txId: string): Promise<any> {
+  public async getTransactionResult(txId: string): Promise<FCLTransactionStatus | null> {
     try {
       return await fcl.tx(txId).onceSealed();
     } catch (error) {

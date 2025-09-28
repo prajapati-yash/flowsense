@@ -10,7 +10,7 @@ export interface ParsedIntent {
   confidence: number;
   originalInput: string;
   errors: string[];
-  greetingType?: 'hello' | 'goodbye' | 'how_are_you' | 'general';
+  greetingType?: 'help' | 'hello' | 'goodbye' | 'how_are_you' | 'general';
 }
 
 export class FlowSenseNLPParser {

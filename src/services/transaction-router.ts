@@ -3,10 +3,15 @@
 
 import { ParsedIntent } from './nlp-parser';
 
+export interface TransactionParameter {
+  type: 'UFix64' | 'Address' | 'String' | 'Bool';
+  value: string | boolean;
+}
+
 export interface TransactionPlan {
   type: 'submit_intent_final' | 'immediate_transfer';
   cadenceCode: string;
-  parameters: any[];
+  parameters: TransactionParameter[];
   gasEstimate: string;
   description: string;
   executionMode: 'immediate' | 'scheduled' | 'nativeScheduled'; // NEW: Added native scheduling
