@@ -263,7 +263,7 @@ access(all) contract FlowSenseActionsV2 {
     // Storage paths for handler management
     access(all) let HandlerStoragePath: StoragePath
     access(all) let HandlerPublicPath: PublicPath
-    access(all) let HandlerPrivatePath: PrivatePath
+    access(all) let HandlerPrivatePath: PublicPath
 
     init() {
         self.nextIntentId = 1
@@ -276,7 +276,7 @@ access(all) contract FlowSenseActionsV2 {
         // Storage paths
         self.HandlerStoragePath = /storage/FlowSenseTransferHandlerV2
         self.HandlerPublicPath = /public/FlowSenseTransferHandlerV2
-        self.HandlerPrivatePath = /private/FlowSenseTransferHandlerV2Private
+        self.HandlerPrivatePath = /public/FlowSenseTransferHandlerV2Private
 
         // Register core transfer action
         self.registeredActions["transfer"] = ActionMetadata(
@@ -301,8 +301,6 @@ access(all) contract FlowSenseActionsV2 {
 
         // Create capabilities with proper entitlements for Flow scheduler
         let executeCap = self.account.capabilities.storage.issue<auth(FlowTransactionScheduler.Execute) &{FlowTransactionScheduler.TransactionHandler}>(self.HandlerStoragePath)
-        self.account.capabilities.unpublish(self.HandlerPrivatePath)
-        self.account.capabilities.publish(executeCap, at: self.HandlerPrivatePath)
 
         let publicCap = self.account.capabilities.storage.issue<&FlowSenseTransferHandler>(self.HandlerStoragePath)
         self.account.capabilities.unpublish(self.HandlerPublicPath)
@@ -468,7 +466,7 @@ access(all) contract FlowSenseActionsV2 {
         }
 
         // Get handler capability with proper interface conformance
-        let handlerCap = self.account.capabilities.get<auth(FlowTransactionScheduler.Execute) &{FlowTransactionScheduler.TransactionHandler}>(self.HandlerPrivatePath)
+        let handlerCap = self.account.capabilities.storage.issue<auth(FlowTransactionScheduler.Execute) &{FlowTransactionScheduler.TransactionHandler}>(self.HandlerStoragePath)
         if !handlerCap.check() {
             return ActionResult(
                 success: false,
