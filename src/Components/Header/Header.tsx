@@ -1,6 +1,6 @@
 'use client'
 
-import WalletConnectionWrapper from '@/Components/WalletConnection/WalletConnectionWrapper'
+import WalletButton from '@/Components/WalletConnection/WalletButton'
 import NetworkSwitcher from '@/Components/NetworkSwitcher/NetworkSwitcher'
 import Image from 'next/image'
 import logo from "@/app/assets/fs.png"
@@ -17,8 +17,8 @@ export default function Header({ className = '' }: HeaderProps) {
 
         {/* Wallet Controls */}
         <div className="flex items-center gap-4">
-          <NetworkSwitcher className="wallet-controls-network" />
-          <WalletConnectionWrapper className="wallet-controls-connection" />
+          <NetworkSwitcher />
+          <WalletButton />
         </div>
       </div>
     </header>

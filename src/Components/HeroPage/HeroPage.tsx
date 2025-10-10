@@ -2,7 +2,7 @@
 import React, { useRef } from "react";
 import { motion, MotionValue, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
-import FloatingWalletCircle from "@/Components/3DCircle/FloatingWalletCircle";
+// import FloatingWalletCircle from "@/Components/3DCircle/FloatingWalletCircle";
 
 interface KeywordTileProps {
   text: string;
@@ -164,8 +164,7 @@ const HeroPage = () => {
         </div>
       </div>
 
-      {/* 3D Floating Wallet Circle */}
-      <FloatingWalletCircle />
+      {/* 3D Floating Wallet Circle - Removed */}
     </div>
   );
 };

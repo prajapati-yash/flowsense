@@ -1,386 +1,244 @@
-// FlowSense Natural Language Parser
-// Converts user inputs like "Transfer 10 FLOW to 0x123" into structured intents
+/**
+ * NLP Parser Service
+ * Parses natural language commands into structured transaction intents
+ */
+
+export type TransactionType =
+  | 'swap'
+  | 'transfer'
+  | 'balance'
+  | 'unknown';
 
 export interface ParsedIntent {
-  action: 'transfer' | 'schedule' | 'greeting' | 'help' | 'unknown';
-  amount?: number;
-  recipient?: string;
-  timing?: 'immediate' | 'scheduled';
-  scheduleTime?: Date;
+  type: TransactionType;
+  params: Record<string, any>;
   confidence: number;
-  originalInput: string;
-  errors: string[];
-  greetingType?: 'help' | 'hello' | 'goodbye' | 'how_are_you' | 'general';
+  rawInput: string;
 }
 
-export class FlowSenseNLPParser {
+// Token symbols and their contract addresses
+const TOKEN_MAP: Record<string, {
+  name: string;
+  address: string;
+  storagePath: string;
+  receiverPath: string;
+  balancePath: string;
+  typeIdentifier: string;
+}> = {
+  'flow': {
+    name: 'FlowToken',
+    address: '0x1654653399040a61',
+    storagePath: '/storage/flowTokenVault',
+    receiverPath: '/public/flowTokenReceiver',
+    balancePath: '/public/flowTokenBalance',
+    typeIdentifier: 'A.1654653399040a61.FlowToken.Vault'
+  },
+  'usdc': {
+    name: 'stgUSDC',
+    address: '0x1e4aa0b87d10b141',
+    storagePath: '/storage/EVMVMBridgedToken_f1815bd50389c46847f0bda824ec8da914045d14Vault',
+    receiverPath: '/public/EVMVMBridgedToken_f1815bd50389c46847f0bda824ec8da914045d14Receiver',
+    balancePath: '/public/EVMVMBridgedToken_f1815bd50389c46847f0bda824ec8da914045d14Balance',
+    typeIdentifier: 'A.1e4aa0b87d10b141.EVMVMBridgedToken_f1815bd50389c46847f0bda824ec8da914045d14.Vault'
+  },
+  'fusd': {
+    name: 'FUSD',
+    address: '0x3c5959b568896393',
+    storagePath: '/storage/fusdVault',
+    receiverPath: '/public/fusdReceiver',
+    balancePath: '/public/fusdBalance',
+    typeIdentifier: 'A.3c5959b568896393.FUSD.Vault'
+  },
+  'usdt': {
+    name: 'stgUSDT',
+    address: '0x1e4aa0b87d10b141',
+    storagePath: '/storage/EVMVMBridgedToken_674843c06ff83502ddb4d37c2e09c01cda38cbc8Vault',
+    receiverPath: '/public/EVMVMBridgedToken_674843c06ff83502ddb4d37c2e09c01cda38cbc8Receiver',
+    balancePath: '/public/EVMVMBridgedToken_674843c06ff83502ddb4d37c2e09c01cda38cbc8Balance',
+    typeIdentifier: 'A.1e4aa0b87d10b141.EVMVMBridgedToken_674843c06ff83502ddb4d37c2e09c01cda38cbc8.Vault'
+  },
+};
 
-  // Action keywords that indicate transfer intent
-  private transferKeywords = [
-    'transfer', 'send', 'pay', 'move', 'give', 'deposit'
-  ];
+class NLPParser {
+  /**
+   * Parse user input into transaction intent
+   */
+  parse(input: string): ParsedIntent {
+    const normalizedInput = input.toLowerCase().trim();
 
-  // Timing keywords for scheduling
-  private immediateKeywords = [
-    'now', 'immediately', 'right now', 'asap', 'instant'
-  ];
+    // Try to parse as swap
+    const swapIntent = this.parseSwap(normalizedInput);
+    if (swapIntent) {
+      return { ...swapIntent, rawInput: input };
+    }
 
-  private scheduledKeywords = [
-    'later', 'tomorrow', 'minute', 'hour', 'day', 'week'
-  ];
+    // Try to parse as transfer
+    const transferIntent = this.parseTransfer(normalizedInput);
+    if (transferIntent) {
+      return { ...transferIntent, rawInput: input };
+    }
 
-  // Greeting keywords
-  private helloKeywords = [
-    'hello', 'hi', 'hey', 'greetings', 'good morning', 'good afternoon',
-    'good evening', 'good day', 'hola', 'howdy', 'sup', 'what\'s up'
-  ];
+    // Try to parse as balance check
+    const balanceIntent = this.parseBalance(normalizedInput);
+    if (balanceIntent) {
+      return { ...balanceIntent, rawInput: input };
+    }
 
-  private goodbyeKeywords = [
-    'goodbye', 'bye', 'see you', 'farewell', 'take care', 'catch you later',
-    'later', 'peace', 'see ya', 'adios', 'ciao', 'cheerio'
-  ];
-
-  private howAreYouKeywords = [
-    'how are you', 'how\'s it going', 'how do you do', 'what\'s up',
-    'how have you been', 'how are things', 'what\'s new'
-  ];
-
-  private helpKeywords = [
-    'help', 'how do i', 'what can you do', 'commands', 'instructions',
-    'guide', 'tutorial', 'how to', 'what is', 'explain'
-  ];
-
-  public parseUserInput(input: string): ParsedIntent {
-    const intent: ParsedIntent = {
-      action: 'unknown',
+    // Unknown intent
+    return {
+      type: 'unknown',
+      params: {},
       confidence: 0,
-      originalInput: input,
-      errors: []
+      rawInput: input,
     };
-
-    try {
-      const normalizedInput = input.toLowerCase().trim();
-
-      // 1. Check for greetings first
-      const greetingResult = this.detectGreeting(normalizedInput);
-      if (greetingResult.isGreeting) {
-        intent.action = greetingResult.type === 'help' ? 'help' : 'greeting';
-        intent.greetingType = greetingResult.type;
-        intent.confidence = 95;
-        return intent;
-      }
-
-      // 2. Detect transfer action
-      const hasTransferAction = this.detectTransferAction(normalizedInput);
-      if (!hasTransferAction) {
-        intent.errors.push("I don't understand this action. Try: 'Transfer 10 FLOW to 0x123'");
-        return intent;
-      }
-
-      intent.action = 'transfer';
-
-      // 2. Extract amount
-      const amount = this.extractAmount(normalizedInput);
-      if (amount) {
-        intent.amount = amount;
-      } else {
-        intent.errors.push("Please specify an amount (e.g., '10 FLOW' or '5.5 FLOW')");
-      }
-
-      // 3. Extract recipient address
-      const recipient = this.extractRecipient(normalizedInput);
-      if (recipient) {
-        intent.recipient = recipient;
-      } else {
-        intent.errors.push("Please provide a valid Flow address (e.g., '0x123abc...')");
-      }
-
-      // 4. Detect timing
-      const timing = this.detectTiming(normalizedInput);
-      intent.timing = timing.mode;
-      intent.scheduleTime = timing.scheduleTime;
-
-      // 5. Calculate confidence score
-      intent.confidence = this.calculateConfidence(intent);
-
-      // 6. Determine if this should be scheduled or immediate
-      if (intent.timing === 'scheduled' || timing.scheduleTime) {
-        intent.action = 'schedule';
-      }
-
-      return intent;
-
-    } catch (error) {
-      intent.errors.push("Sorry, I couldn't understand your request. Please try again.");
-      return intent;
-    }
   }
 
-  private detectGreeting(input: string): { isGreeting: boolean; type?: 'hello' | 'goodbye' | 'how_are_you' | 'help' | 'general' } {
-    // Check for help requests
-    if (this.helpKeywords.some(keyword => input.includes(keyword))) {
-      return { isGreeting: true, type: 'help' };
-    }
-
-    // Check for "how are you" patterns
-    if (this.howAreYouKeywords.some(keyword => input.includes(keyword))) {
-      return { isGreeting: true, type: 'how_are_you' };
-    }
-
-    // Check for hello greetings
-    if (this.helloKeywords.some(keyword => input.includes(keyword))) {
-      return { isGreeting: true, type: 'hello' };
-    }
-
-    // Check for goodbye greetings
-    if (this.goodbyeKeywords.some(keyword => input.includes(keyword))) {
-      return { isGreeting: true, type: 'goodbye' };
-    }
-
-    // Check for general conversational inputs (short, no transfer keywords)
-    if (input.length < 20 && !this.transferKeywords.some(keyword => input.includes(keyword))) {
-      const commonGreetings = ['thanks', 'thank you', 'ok', 'okay', 'cool', 'nice', 'awesome', 'great'];
-      if (commonGreetings.some(keyword => input.includes(keyword))) {
-        return { isGreeting: true, type: 'general' };
-      }
-    }
-
-    return { isGreeting: false };
-  }
-
-  private detectTransferAction(input: string): boolean {
-    return this.transferKeywords.some(keyword =>
-      input.includes(keyword)
-    );
-  }
-
-  private extractAmount(input: string): number | undefined {
-    // Patterns: "10 FLOW", "5.5 flow", "100 Flow", "0.1FLOW"
-    const amountPatterns = [
-      /(\d+\.?\d*)\s*flow/i,
-      /(\d+\.?\d*)\s*FLOW/,
-      /flow\s*(\d+\.?\d*)/i,
-      /(\d+\.?\d*)/  // fallback for just numbers
+  /**
+   * Parse swap command
+   * Examples:
+   * - "swap 10 FLOW to USDC"
+   * - "swap 5 USDC for FLOW"
+   * - "exchange 100 FLOW to USDC"
+   */
+  private parseSwap(input: string): ParsedIntent | null {
+    // Patterns for swap commands
+    const patterns = [
+      // "swap 10 FLOW to USDC"
+      /swap\s+(\d+\.?\d*)\s+(\w+)\s+(?:to|for|into)\s+(\w+)/i,
+      // "exchange 10 FLOW to USDC"
+      /exchange\s+(\d+\.?\d*)\s+(\w+)\s+(?:to|for|into)\s+(\w+)/i,
+      // "trade 10 FLOW for USDC"
+      /trade\s+(\d+\.?\d*)\s+(\w+)\s+(?:to|for|into)\s+(\w+)/i,
+      // "convert 10 FLOW to USDC"
+      /convert\s+(\d+\.?\d*)\s+(\w+)\s+(?:to|for|into)\s+(\w+)/i,
     ];
 
-    for (const pattern of amountPatterns) {
+    for (const pattern of patterns) {
       const match = input.match(pattern);
       if (match) {
-        const amount = parseFloat(match[1]);
+        const [, amount, tokenIn, tokenOut] = match;
+        const tokenInNormalized = tokenIn.toLowerCase();
+        const tokenOutNormalized = tokenOut.toLowerCase();
 
-        // Enhanced validation
-        if (isNaN(amount)) {
-          continue; // Skip invalid numbers
+        // Validate tokens
+        if (!TOKEN_MAP[tokenInNormalized] || !TOKEN_MAP[tokenOutNormalized]) {
+          continue;
         }
 
-        if (amount <= 0) {
-          continue; // Skip zero or negative amounts
-        }
-
-        // Temporarily disabled for testing
-        // if (amount > 10000000) {
-        //   continue; // Skip amounts exceeding maximum (10M FLOW)
-        // }
-
-        // Check for reasonable decimal precision (Flow supports up to 8 decimal places)
-        const decimalPlaces = (amount.toString().split('.')[1] || '').length;
-        if (decimalPlaces > 8) {
-          continue; // Skip amounts with too many decimal places
-        }
-
-        return amount;
+        return {
+          type: 'swap',
+          params: {
+            amountIn: amount,
+            tokenIn: tokenInNormalized,
+            tokenOut: tokenOutNormalized,
+            tokenInInfo: TOKEN_MAP[tokenInNormalized],
+            tokenOutInfo: TOKEN_MAP[tokenOutNormalized],
+          },
+          confidence: 0.9,
+          rawInput: input,
+        };
       }
     }
 
-    return undefined;
+    return null;
   }
 
-  private extractRecipient(input: string): string | undefined {
-    // Flow address patterns: 0x followed by hex characters
-    const addressPatterns = [
-      /0x[a-fA-F0-9]{16}/g,  // Standard Flow address (16 hex chars)
-      /0x[a-fA-F0-9]{8,}/g   // Flexible length for partial addresses
+  /**
+   * Parse transfer command
+   * Examples:
+   * - "send 10 FLOW to 0x1234567890abcdef"
+   * - "transfer 5 USDC to 0xabcdef1234567890"
+   */
+  private parseTransfer(input: string): ParsedIntent | null {
+    const patterns = [
+      // "send 10 FLOW to 0x..."
+      /(?:send|transfer|pay)\s+(\d+\.?\d*)\s+(\w+)\s+to\s+(0x[a-f0-9]+)/i,
     ];
 
-    for (const pattern of addressPatterns) {
-      const matches = input.match(pattern);
-      if (matches && matches.length > 0) {
-        const address = matches[0];
+    for (const pattern of patterns) {
+      const match = input.match(pattern);
+      if (match) {
+        const [, amount, token, recipient] = match;
+        const tokenNormalized = token.toLowerCase();
 
-        // Validate address format
-        if (this.isValidFlowAddress(address)) {
-          return address;
+        // Validate token
+        if (!TOKEN_MAP[tokenNormalized]) {
+          continue;
         }
+
+        return {
+          type: 'transfer',
+          params: {
+            amount,
+            token: tokenNormalized,
+            recipient,
+            tokenInfo: TOKEN_MAP[tokenNormalized],
+          },
+          confidence: 0.9,
+          rawInput: input,
+        };
       }
     }
 
-    return undefined;
+    return null;
   }
 
-  private isValidFlowAddress(address: string): boolean {
-    // Basic Flow address validation
-    if (!address || typeof address !== 'string') {
-      return false;
-    }
-
-    // Must start with 0x
-    if (!address.startsWith('0x')) {
-      return false;
-    }
-
-    // Remove 0x prefix for validation
-    const hexPart = address.slice(2);
-
-    // Must be valid hexadecimal
-    if (!/^[a-fA-F0-9]+$/.test(hexPart)) {
-      return false;
-    }
-
-    // Flow addresses should be 8 bytes (16 hex characters) for mainnet/testnet
-    // But we allow flexibility for development
-    if (hexPart.length < 8 || hexPart.length > 16) {
-      return false;
-    }
-
-    return true;
-  }
-
-  private detectTiming(input: string): { mode: 'immediate' | 'scheduled', scheduleTime?: Date } {
-    // Check for immediate keywords
-    const hasImmediate = this.immediateKeywords.some(keyword =>
-      input.includes(keyword)
-    );
-
-    if (hasImmediate) {
-      return { mode: 'immediate' };
-    }
-
-    // Check for scheduled keywords and extract timing
-    const scheduleTime = this.extractScheduleTime(input);
-    if (scheduleTime) {
-      return { mode: 'scheduled', scheduleTime };
-    }
-
-    // Default to immediate if no timing specified
-    return { mode: 'immediate' };
-  }
-
-  private extractScheduleTime(input: string): Date | undefined {
-    const now = new Date();
-
-    // Tomorrow
-    if (input.includes('tomorrow')) {
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(9, 0, 0, 0); // 9 AM tomorrow
-      return tomorrow;
-    }
-
-    // Enhanced patterns for minutes - handles both "in X minutes" and "after X minutes"
-    const minuteMatch = input.match(/(in|after)\s+(\d+)\s+(minutes?|mins?)/i);
-    if (minuteMatch) {
-      const minutes = parseInt(minuteMatch[2]);
-      const futureTime = new Date(now.getTime() + minutes * 60 * 1000);
-      return futureTime;
-    }
-
-    // Enhanced patterns for hours - handles both "in X hours" and "after X hours"
-    const hourMatch = input.match(/(in|after)\s+(\d+)\s+(hours?|hrs?)/i);
-    if (hourMatch) {
-      const hours = parseInt(hourMatch[2]);
-      const futureTime = new Date(now.getTime() + hours * 60 * 60 * 1000);
-      return futureTime;
-    }
-
-    // Enhanced patterns for days - handles both "in X days" and "after X days"
-    const dayMatch = input.match(/(in|after)\s+(\d+)\s+days?/i);
-    if (dayMatch) {
-      const days = parseInt(dayMatch[2]);
-      const futureTime = new Date(now);
-      futureTime.setDate(futureTime.getDate() + days);
-      return futureTime;
-    }
-
-    // Handle "X minutes" or "X mins" without "in/after" prefix
-    const simpleMinuteMatch = input.match(/(\d+)\s+(minutes?|mins?)/i);
-    if (simpleMinuteMatch && !input.includes('in') && !input.includes('after')) {
-      const minutes = parseInt(simpleMinuteMatch[1]);
-      const futureTime = new Date(now.getTime() + minutes * 60 * 1000);
-      return futureTime;
-    }
-
-    // General "later" keyword - defaults to 1 hour from now
-    if (input.includes('later') && !minuteMatch && !hourMatch && !dayMatch) {
-      const futureTime = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
-      return futureTime;
-    }
-
-    return undefined;
-  }
-
-  private calculateConfidence(intent: ParsedIntent): number {
-    let confidence = 0;
-
-    // Base confidence for recognized action
-    if (intent.action !== 'unknown') confidence += 30;
-
-    // Amount confidence
-    if (intent.amount && intent.amount > 0) confidence += 25;
-
-    // Recipient confidence
-    if (intent.recipient && this.isValidFlowAddress(intent.recipient)) confidence += 25;
-
-    // Timing confidence
-    if (intent.timing) confidence += 20;
-
-    // Reduce confidence for errors
-    confidence -= intent.errors.length * 15;
-
-    return Math.max(0, Math.min(100, confidence));
-  }
-
-
-  // Helper method to suggest improvements for low-confidence intents
-  public getSuggestions(intent: ParsedIntent): string[] {
-    const suggestions: string[] = [];
-
-    if (intent.confidence < 50) {
-      suggestions.push("💡 Try: 'Transfer 10 FLOW to 0x123abc456def7890'");
-      suggestions.push("💡 Try: 'Send 5.5 FLOW to 0xa1f95a488eb7e202 immediately'");
-      suggestions.push("💡 Try: 'Pay 100 FLOW to 0x456 in 5 minutes'");
-    }
-
-    if (!intent.amount) {
-      suggestions.push("📝 Please specify an amount like '10 FLOW'");
-    }
-
-    if (!intent.recipient) {
-      suggestions.push("📝 Please provide a Flow address like '0x123abc...'");
-    }
-
-    return suggestions;
-  }
-
-  // Test method for debugging
-  public testParser(): void {
-    const testInputs = [
-      "Transfer 10 FLOW to 0x123abc456def7890",
-      "Send 5.5 FLOW to 0xa1f95a488eb7e202 immediately",
-      "Pay 100 FLOW to 0x456 in 5 minutes",
-      "Move 50 FLOW to 0x789 tomorrow",
-      "Give 1.5 flow to 0x9c23faae746705fe now",
-      "invalid input test"
+  /**
+   * Parse balance check command
+   * Examples:
+   * - "check balance"
+   * - "show my FLOW balance"
+   * - "what's my USDC balance"
+   */
+  private parseBalance(input: string): ParsedIntent | null {
+    const patterns = [
+      // "check balance" or "show balance"
+      /(?:check|show|get|what'?s)\s+(?:my\s+)?balance/i,
+      // "check FLOW balance"
+      /(?:check|show|get|what'?s)\s+(?:my\s+)?(\w+)\s+balance/i,
+      // "balance of FLOW"
+      /balance\s+(?:of\s+)?(\w+)?/i,
     ];
 
-    console.log("🧪 Testing FlowSense NLP Parser:");
-    testInputs.forEach(input => {
-      const result = this.parseUserInput(input);
-      console.log(`Input: "${input}"`);
-      console.log(`Result:`, result);
-      console.log('---');
-    });
+    for (const pattern of patterns) {
+      const match = input.match(pattern);
+      if (match) {
+        const token = match[1] ? match[1].toLowerCase() : 'flow';
+
+        // Validate token
+        if (token && !TOKEN_MAP[token]) {
+          continue;
+        }
+
+        return {
+          type: 'balance',
+          params: {
+            token,
+            tokenInfo: TOKEN_MAP[token],
+          },
+          confidence: 0.85,
+          rawInput: input,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Get token info by symbol
+   */
+  getTokenInfo(symbol: string) {
+    return TOKEN_MAP[symbol.toLowerCase()];
+  }
+
+  /**
+   * Get all supported tokens
+   */
+  getSupportedTokens() {
+    return Object.keys(TOKEN_MAP);
   }
 }
 
 // Export singleton instance
-export const flowSenseParser = new FlowSenseNLPParser();
+export const nlpParser = new NLPParser();
