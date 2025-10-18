@@ -10,6 +10,14 @@ export interface TransactionStatus {
   errorMessage?: string;
 }
 
+export type TransactionResult =
+  | { success: true; transactionId: string; transaction: unknown }
+  | { success: false; error: string };
+
+export type ScriptResult =
+  | { success: true; result: unknown }
+  | { success: false; error: string };
+
 export function useFlowTransaction() {
   const { showToast } = useToast();
   const [txStatus, setTxStatus] = useState<TransactionStatus>({ status: "idle" });
@@ -19,7 +27,7 @@ export function useFlowTransaction() {
 
   // Execute a Cadence transaction
   const executeTransaction = useCallback(
-    async (cadenceCode: string, args: unknown[] = [], statusCallback?: (status: TransactionStatus) => void) => {
+    async (cadenceCode: string, args: unknown[] = [], statusCallback?: (status: TransactionStatus) => void): Promise<TransactionResult> => {
       try {
         // Reset status
         const initialStatus: TransactionStatus = { status: "pending" };
@@ -88,7 +96,7 @@ export function useFlowTransaction() {
   );
 
   // Execute a Cadence script (read-only, no transaction)
-  const executeScript = useCallback(async (cadenceCode: string, args: unknown[] = []) => {
+  const executeScript = useCallback(async (cadenceCode: string, args: unknown[] = []): Promise<ScriptResult> => {
     try {
       const result = await fcl.query({
         cadence: cadenceCode,

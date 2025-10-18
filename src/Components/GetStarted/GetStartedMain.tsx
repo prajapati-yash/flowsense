@@ -302,24 +302,24 @@ const GetStartedMain = () => {
         // Add result message
         if ('estimatedGas' in plan) {
           // Transaction result
-          if (result.success) {
+          if (result.success && 'transactionId' in result) {
             const successMessage = transactionRouter.formatTransactionResult(
               intent,
-              result.transactionId!
+              result.transactionId
             );
             await addMessageToDB(chatId, successMessage, false, 'transaction_result', {
               transactionId: result.transactionId,
             });
-          } else {
+          } else if (!result.success && 'error' in result) {
             const errorMessage = transactionRouter.formatError(intent, result.error || 'Unknown error');
             await addMessageToDB(chatId, errorMessage, false, 'error');
           }
         } else {
           // Script result
-          if (result.success) {
+          if (result.success && 'result' in result) {
             const resultMessage = transactionRouter.formatScriptResult(intent, result.result);
             await addMessageToDB(chatId, resultMessage, false, 'text');
-          } else {
+          } else if (!result.success && 'error' in result) {
             const errorMessage = transactionRouter.formatError(intent, result.error || 'Unknown error');
             await addMessageToDB(chatId, errorMessage, false, 'error');
           }

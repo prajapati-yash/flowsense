@@ -51,47 +51,67 @@ transaction(
 `;
 
 /**
- * Real IncrementFi swap transaction for mainnet
- * Updated for Cadence 1.0+
+ * Flow Actions Swap Transaction
+ * Uses standardized Swapper interface with IncrementFi connector
+ * Updated for Cadence 1.0+ and Flow Actions architecture
  */
-const INCREMENTFI_SWAP_TRANSACTION = `
+const FLOW_ACTIONS_SWAP_TRANSACTION = `
 import FungibleToken from 0xf233dcee88fe0abe
-import SwapFactory from 0xb063c16cac85dbd1
-import SwapInterfaces from 0xb78ef7afa52ff906
-import SwapConfig from 0xb78ef7afa52ff906
+import FlowActionsInterfaces from 0xa9c238d801df5106
+import IncrementFiConnector from 0xa9c238d801df5106
 
 transaction(
     amountIn: UFix64,
     amountOutMin: UFix64,
-    swapPath: [String],
     tokenInPath: StoragePath,
+    tokenOutType: String,
     tokenOutReceiverPath: PublicPath
 ) {
 
-    let pairPublicRef: &{SwapInterfaces.PairPublic}
+    let swapper: &{FlowActionsInterfaces.Swapper}
     let tokenInVault: @{FungibleToken.Vault}
     let tokenOutReceiverRef: &{FungibleToken.Receiver}
+    let outputType: Type
 
-    prepare(signer: auth(Storage, BorrowValue) &Account) {
+    prepare(signer: auth(Storage, BorrowValue, Capabilities) &Account) {
 
-        assert(swapPath.length == 2, message: "Swap path must contain exactly 2 tokens")
+        // Setup IncrementFi swapper if not exists
+        IncrementFiConnector.setupSwapper(account: signer)
 
-        let token0Key = SwapConfig.SliceTokenTypeIdentifierFromVaultType(vaultTypeIdentifier: swapPath[0])
-        let token1Key = SwapConfig.SliceTokenTypeIdentifierFromVaultType(vaultTypeIdentifier: swapPath[1])
+        // Borrow swapper capability
+        self.swapper = signer.capabilities.borrow<&{FlowActionsInterfaces.Swapper}>(
+            IncrementFiConnector.SwapperPublicPath
+        ) ?? panic("Could not borrow Swapper capability")
 
-        // Get pair address
-        let pairAddr = SwapFactory.getPairAddress(token0Key: token0Key, token1Key: token1Key)
-            ?? panic("Swap pair does not exist for ".concat(token0Key).concat(" / ").concat(token1Key))
+        // Parse output token type
+        self.outputType = CompositeType(tokenOutType)
+            ?? panic("Invalid token type identifier: ".concat(tokenOutType))
 
-        // Borrow pair public reference
-        self.pairPublicRef = getAccount(pairAddr)
-            .capabilities.borrow<&{SwapInterfaces.PairPublic}>(SwapConfig.PairPublicPath)
-            ?? panic("Could not borrow pair public reference")
-
-        // Borrow input token vault and withdraw
-        let vault = signer.storage.borrow<auth(FungibleToken.Withdraw) &{FungibleToken.Vault}>(
+        // Validate swap path exists
+        let tokenInVaultRef = signer.storage.borrow<&{FungibleToken.Vault}>(
             from: tokenInPath
         ) ?? panic("Could not borrow input token vault from ".concat(tokenInPath.toString()))
+
+        let tokenInType = tokenInVaultRef.getType()
+
+        assert(
+            self.swapper.canSwap(tokenInType: tokenInType, tokenOutType: self.outputType),
+            message: "Swap path does not exist for ".concat(tokenInType.identifier).concat(" -> ").concat(tokenOutType)
+        )
+
+        // Get quote for slippage check
+        let quote = self.swapper.getQuote(
+            tokenInType: tokenInType,
+            tokenOutType: self.outputType,
+            amountIn: amountIn
+        )
+        log("Expected output: ".concat(quote.toString()))
+        log("Minimum output: ".concat(amountOutMin.toString()))
+
+        // Withdraw input tokens
+        let vault = signer.storage.borrow<auth(FungibleToken.Withdraw) &{FungibleToken.Vault}>(
+            from: tokenInPath
+        ) ?? panic("Could not borrow input token vault for withdrawal")
 
         self.tokenInVault <- vault.withdraw(amount: amountIn)
 
@@ -102,26 +122,17 @@ transaction(
     }
 
     execute {
-        // Perform swap
-        let swapResVault <- self.pairPublicRef.swap(
+        // Execute swap via Flow Actions Swapper interface
+        let swapResVault <- self.swapper.swap(
             vaultIn: <-self.tokenInVault,
-            exactAmountOut: nil
-        )
-
-        // Validate minimum output (slippage protection)
-        assert(
-            swapResVault.balance >= amountOutMin,
-            message: "Swap output ".concat(swapResVault.balance.toString())
-                .concat(" is less than minimum ").concat(amountOutMin.toString())
-                .concat(". Slippage too high.")
+            tokenOutType: self.outputType,
+            amountOutMin: amountOutMin
         )
 
         // Deposit output tokens to user
         self.tokenOutReceiverRef.deposit(from: <-swapResVault)
 
-        log("✅ Swap successful!")
-        log("Input: ".concat(amountIn.toString()))
-        log("Output: >= ".concat(amountOutMin.toString()))
+        log("✅ Swap successful via Flow Actions!")
     }
 }
 `;
@@ -195,16 +206,182 @@ access(all) fun main(address: Address, storagePath: String): UFix64 {
 }
 `;
 
+/**
+ * Get all token balances for a user (portfolio view)
+ * Checks known token paths on Flow mainnet
+ */
+const GET_PORTFOLIO_SCRIPT = `
+import FungibleToken from 0xf233dcee88fe0abe
+import FlowToken from 0x1654653399040a61
+
+access(all) struct TokenBalance {
+    access(all) let symbol: String
+    access(all) let balance: UFix64
+    access(all) let name: String
+    access(all) let typeIdentifier: String
+
+    init(symbol: String, balance: UFix64, name: String, typeIdentifier: String) {
+        self.symbol = symbol
+        self.balance = balance
+        self.name = name
+        self.typeIdentifier = typeIdentifier
+    }
+}
+
+access(all) fun main(address: Address): [TokenBalance] {
+    let account = getAccount(address)
+    var balances: [TokenBalance] = []
+
+    // Helper to try borrowing a token vault and add to balances if it exists
+    fun tryAddToken(path: PublicPath, symbol: String, name: String): Bool {
+        if let vaultRef = account.capabilities.borrow<&{FungibleToken.Balance}>(path) {
+            if vaultRef.balance > 0.0 {
+                balances.append(TokenBalance(
+                    symbol: symbol,
+                    balance: vaultRef.balance,
+                    name: name,
+                    typeIdentifier: vaultRef.getType().identifier
+                ))
+                return true
+            }
+        }
+        return false
+    }
+
+    // Helper to try borrowing from Receiver path (for tokens that don't publish Balance)
+    fun tryAddTokenFromReceiver(path: PublicPath, symbol: String, name: String): Bool {
+        if let receiverRef = account.capabilities.borrow<&{FungibleToken.Receiver}>(path) {
+            // Try to cast to Balance interface
+            if let balanceRef = receiverRef as? &{FungibleToken.Balance} {
+                if balanceRef.balance > 0.0 {
+                    balances.append(TokenBalance(
+                        symbol: symbol,
+                        balance: balanceRef.balance,
+                        name: name,
+                        typeIdentifier: balanceRef.getType().identifier
+                    ))
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    // Check FLOW (FlowToken)
+    tryAddToken(
+        path: /public/flowTokenBalance,
+        symbol: "FLOW",
+        name: "FlowToken"
+    )
+
+    // Check USDC (FiatToken - Circle's USDC)
+    tryAddToken(
+        path: /public/USDCVaultBalance,
+        symbol: "USDC",
+        name: "FiatToken"
+    )
+
+    // Check stgUSDC (Stargate bridged USDC from EVM)
+    // Note: Uses Receiver path because Balance capability is not published
+    tryAddTokenFromReceiver(
+        path: /public/EVMVMBridgedToken_f1815bd50389c46847f0bda824ec8da914045d14Receiver,
+        symbol: "USDC",
+        name: "stgUSDC"
+    )
+
+    // Check stgUSDT (Stargate bridged USDT from EVM)
+    // Note: Uses Receiver path because Balance capability is not published
+    tryAddTokenFromReceiver(
+        path: /public/EVMVMBridgedToken_674843c06ff83502ddb4d37c2e09c01cda38cbc8Receiver,
+        symbol: "USDT",
+        name: "stgUSDT"
+    )
+
+    // Check FUSD (deprecated but may still exist)
+    tryAddToken(
+        path: /public/fusdBalance,
+        symbol: "FUSD",
+        name: "FUSD"
+    )
+
+    // Check USDT (Tether USD)
+    tryAddToken(
+        path: /public/teleportedTetherTokenBalance,
+        symbol: "USDT",
+        name: "TeleportedTetherToken"
+    )
+
+    // Check BloctoToken
+    tryAddToken(
+        path: /public/bloctoTokenBalance,
+        symbol: "BLT",
+        name: "BloctoToken"
+    )
+
+    // Check tUSDT (other USDT variant)
+    tryAddToken(
+        path: /public/tUSDTVaultBalance,
+        symbol: "USDT",
+        name: "tUSDT"
+    )
+
+    // Check FLOW staking tokens
+    tryAddToken(
+        path: /public/stFlowTokenBalance,
+        symbol: "stFLOW",
+        name: "stFlowToken"
+    )
+
+    return balances
+}
+`;
+
+/**
+ * Get price/quote using Flow Actions Swapper
+ * Uses IncrementFi DEX to get current market price
+ */
+const GET_PRICE_SCRIPT = `
+import FlowActionsInterfaces from 0xa9c238d801df5106
+import IncrementFiConnector from 0xa9c238d801df5106
+
+access(all) fun main(
+    swapperAddress: Address,
+    tokenFromType: String,
+    tokenToType: String,
+    amount: UFix64
+): UFix64 {
+    // Parse token types
+    let tokenFrom = CompositeType(tokenFromType)
+        ?? panic("Invalid token type: ".concat(tokenFromType))
+
+    let tokenTo = CompositeType(tokenToType)
+        ?? panic("Invalid token type: ".concat(tokenToType))
+
+    // Borrow swapper capability
+    let account = getAccount(swapperAddress)
+    let swapper = account.capabilities.borrow<&{FlowActionsInterfaces.Swapper}>(
+        IncrementFiConnector.SwapperPublicPath
+    ) ?? panic("Could not borrow Swapper from address ".concat(swapperAddress.toString()))
+
+    // Get quote
+    return swapper.getQuote(
+        tokenInType: tokenFrom,
+        tokenOutType: tokenTo,
+        amountIn: amount
+    )
+}
+`;
+
 export interface TransactionPlan {
   cadence: string;
-  args: any[];
+  args: unknown[];
   description: string;
   estimatedGas?: string;
 }
 
 export interface ScriptPlan {
   cadence: string;
-  args: any[];
+  args: unknown[];
   description: string;
 }
 
@@ -226,7 +403,7 @@ function formatUFix64(value: string | number): string {
  * Convert path string to FCL Path object
  * Example: "/storage/flowTokenVault" -> { domain: "storage", identifier: "flowTokenVault" }
  */
-function pathToObject(pathString: string): { domain: string; identifier: string } {
+function pathToObject(pathString: string): { domain: "storage" | "private" | "public"; identifier: string } {
   const pathMatch = pathString.match(/^\/(storage|public|private)\/(.+)$/);
 
   if (!pathMatch) {
@@ -234,7 +411,7 @@ function pathToObject(pathString: string): { domain: string; identifier: string 
   }
 
   return {
-    domain: pathMatch[1],
+    domain: pathMatch[1] as "storage" | "private" | "public",
     identifier: pathMatch[2],
   };
 }
@@ -254,16 +431,29 @@ class TransactionRouter {
       case 'balance':
         return this.createBalanceScript(intent, userAddress);
 
+      case 'price':
+        return this.createPriceScript(intent, userAddress);
+
+      case 'portfolio':
+        return this.createPortfolioScript(intent, userAddress);
+
       default:
         return null;
     }
   }
 
   /**
-   * Create swap transaction using IncrementFi DEX
+   * Create swap transaction using Flow Actions Swapper interface
+   * Works with any connector (currently IncrementFi)
    */
   private createSwapTransaction(intent: ParsedIntent): TransactionPlan {
-    const { amountIn, tokenIn, tokenOut, tokenInInfo, tokenOutInfo } = intent.params;
+    const { amountIn, tokenIn, tokenOut, tokenInInfo, tokenOutInfo } = intent.params as {
+      amountIn: string | number;
+      tokenIn: string;
+      tokenOut: string;
+      tokenInInfo: { storagePath: string; typeIdentifier: string };
+      tokenOutInfo: { receiverPath: string; typeIdentifier: string };
+    };
 
     // Format amounts for UFix64
     const formattedAmountIn = formatUFix64(amountIn);
@@ -271,23 +461,20 @@ class TransactionRouter {
     // Set minimum output with 1% slippage tolerance (set to 0 for now, will calculate after getting quote)
     const formattedAmountOutMin = "0.0";
 
-    // Create swap path with type identifiers
-    const swapPath = [tokenInInfo.typeIdentifier, tokenOutInfo.typeIdentifier];
-
     // Convert path strings to Path objects
     const tokenInPathObj = pathToObject(tokenInInfo.storagePath);
     const tokenOutReceiverPathObj = pathToObject(tokenOutInfo.receiverPath);
 
     return {
-      cadence: INCREMENTFI_SWAP_TRANSACTION,
+      cadence: FLOW_ACTIONS_SWAP_TRANSACTION,
       args: [
         fcl.arg(formattedAmountIn, t.UFix64),                           // amountIn
         fcl.arg(formattedAmountOutMin, t.UFix64),                       // amountOutMin (slippage protection)
-        fcl.arg(swapPath, t.Array(t.String)),                           // swapPath
         fcl.arg(tokenInPathObj, t.Path),                                // tokenInPath
+        fcl.arg(tokenOutInfo.typeIdentifier, t.String),                 // tokenOutType
         fcl.arg(tokenOutReceiverPathObj, t.Path),                       // tokenOutReceiverPath
       ],
-      description: `Swap ${formattedAmountIn} ${tokenIn.toUpperCase()} to ${tokenOut.toUpperCase()} via IncrementFi`,
+      description: `Swap ${formattedAmountIn} ${tokenIn.toUpperCase()} to ${tokenOut.toUpperCase()} via Flow Actions`,
       estimatedGas: "0.001 FLOW",
     };
   }
@@ -296,7 +483,12 @@ class TransactionRouter {
    * Create transfer transaction
    */
   private createTransferTransaction(intent: ParsedIntent): TransactionPlan {
-    const { amount, token, recipient, tokenInfo } = intent.params;
+    const { amount, token, recipient } = intent.params as {
+      amount: string | number;
+      token: string;
+      recipient: string;
+      tokenInfo: unknown;
+    };
 
     // Format amount for UFix64
     const formattedAmount = formatUFix64(amount);
@@ -321,7 +513,10 @@ class TransactionRouter {
    * Create balance check script
    */
   private createBalanceScript(intent: ParsedIntent, userAddress: string): ScriptPlan {
-    const { token, tokenInfo } = intent.params;
+    const { token, tokenInfo } = intent.params as {
+      token: string;
+      tokenInfo: { storagePath: string };
+    };
 
     if (token === 'flow') {
       return {
@@ -343,15 +538,65 @@ class TransactionRouter {
   }
 
   /**
+   * Create price query script
+   */
+  private createPriceScript(intent: ParsedIntent, userAddress: string): ScriptPlan {
+    const { amount, tokenFrom, tokenTo, tokenFromInfo, tokenToInfo } = intent.params as {
+      amount: string | number;
+      tokenFrom: string;
+      tokenTo: string;
+      tokenFromInfo: { typeIdentifier: string };
+      tokenToInfo: { typeIdentifier: string };
+    };
+
+    // Format amount for UFix64
+    const formattedAmount = formatUFix64(amount);
+
+    return {
+      cadence: GET_PRICE_SCRIPT,
+      args: [
+        fcl.arg(userAddress, t.Address),                      // swapperAddress
+        fcl.arg(tokenFromInfo.typeIdentifier, t.String),      // tokenFromType
+        fcl.arg(tokenToInfo.typeIdentifier, t.String),        // tokenToType
+        fcl.arg(formattedAmount, t.UFix64),                   // amount
+      ],
+      description: `Get price of ${formattedAmount} ${tokenFrom.toUpperCase()} in ${tokenTo.toUpperCase()}`,
+    };
+  }
+
+  /**
+   * Create portfolio query script
+   */
+  private createPortfolioScript(intent: ParsedIntent, userAddress: string): ScriptPlan {
+    return {
+      cadence: GET_PORTFOLIO_SCRIPT,
+      args: [fcl.arg(userAddress, t.Address)],
+      description: 'Get all token balances (portfolio)',
+    };
+  }
+
+  /**
    * Format transaction result for display
    */
   formatTransactionResult(intent: ParsedIntent, transactionId: string): string {
     switch (intent.type) {
-      case 'swap':
-        return `✅ Swap successful!\n\nSwapped ${intent.params.amountIn} ${intent.params.tokenIn.toUpperCase()} to ${intent.params.tokenOut.toUpperCase()}\n\nTransaction ID: ${transactionId}\n\nView on FlowScan: https://flowscan.org/transaction/${transactionId}`;
+      case 'swap': {
+        const { amountIn, tokenIn, tokenOut } = intent.params as {
+          amountIn: string | number;
+          tokenIn: string;
+          tokenOut: string;
+        };
+        return `✅ Swap successful!\n\nSwapped ${amountIn} ${tokenIn.toUpperCase()} to ${tokenOut.toUpperCase()}\n\nTransaction ID: ${transactionId}\n\nView on FlowScan: https://flowscan.org/transaction/${transactionId}`;
+      }
 
-      case 'transfer':
-        return `✅ Transfer successful!\n\nTransferred ${intent.params.amount} ${intent.params.token.toUpperCase()} to ${intent.params.recipient}\n\nTransaction ID: ${transactionId}\n\nView on FlowScan: https://flowscan.org/transaction/${transactionId}`;
+      case 'transfer': {
+        const { amount, token, recipient } = intent.params as {
+          amount: string | number;
+          token: string;
+          recipient: string;
+        };
+        return `✅ Transfer successful!\n\nTransferred ${amount} ${token.toUpperCase()} to ${recipient}\n\nTransaction ID: ${transactionId}\n\nView on FlowScan: https://flowscan.org/transaction/${transactionId}`;
+      }
 
       default:
         return `✅ Transaction successful!\n\nTransaction ID: ${transactionId}`;
@@ -361,10 +606,43 @@ class TransactionRouter {
   /**
    * Format script result for display
    */
-  formatScriptResult(intent: ParsedIntent, result: any): string {
+  formatScriptResult(intent: ParsedIntent, result: unknown): string {
     switch (intent.type) {
       case 'balance':
-        return `💰 Your ${intent.params.token.toUpperCase()} balance: ${result} tokens`;
+        return `💰 Your ${(intent.params.token as string).toUpperCase()} balance: ${result} tokens`;
+
+      case 'price':
+        const { amount, tokenFrom, tokenTo } = intent.params as { amount: string; tokenFrom: string; tokenTo: string };
+        const price = parseFloat(result as string);
+        const formattedPrice = price.toFixed(4);
+
+        if (amount === '1') {
+          return `💵 Current price: 1 ${tokenFrom.toUpperCase()} = ${formattedPrice} ${tokenTo.toUpperCase()}\n\n(Live price from IncrementFi DEX)`;
+        } else {
+          return `💵 Price: ${amount} ${tokenFrom.toUpperCase()} = ${formattedPrice} ${tokenTo.toUpperCase()}\n\n(Live price from IncrementFi DEX)`;
+        }
+
+      case 'portfolio':
+        // Result is array of TokenBalance objects
+        const balances = result as Array<{ symbol: string; balance: string; name: string; typeIdentifier: string }>;
+
+        if (!balances || balances.length === 0) {
+          return `📊 Your Portfolio:\n\nNo tokens found in your account.\n\nStart by acquiring some FLOW or other tokens!`;
+        }
+
+        let portfolioText = `📊 Your Portfolio:\n\n`;
+
+        balances.forEach((token: { symbol: string; balance: string; name: string; typeIdentifier: string }) => {
+          const balance = parseFloat(token.balance).toFixed(4);
+          portfolioText += `💰 ${token.symbol}: ${balance}\n`;
+          if (token.name !== token.symbol) {
+            portfolioText += `   (${token.name})\n`;
+          }
+        });
+
+        portfolioText += `\n✅ Total tokens: ${balances.length}`;
+
+        return portfolioText;
 
       default:
         return `Result: ${JSON.stringify(result)}`;
@@ -376,14 +654,25 @@ class TransactionRouter {
    */
   formatError(intent: ParsedIntent, error: string): string {
     switch (intent.type) {
-      case 'swap':
-        return `❌ Swap failed!\n\n${error}\n\nPlease make sure you have:\n• Sufficient ${intent.params.tokenIn.toUpperCase()} balance\n• Initialized ${intent.params.tokenOut.toUpperCase()} vault\n• Connected to the correct network`;
+      case 'swap': {
+        const { tokenIn, tokenOut } = intent.params as {
+          tokenIn: string;
+          tokenOut: string;
+        };
+        return `❌ Swap failed!\n\n${error}\n\nPlease make sure you have:\n• Sufficient ${tokenIn.toUpperCase()} balance\n• Initialized ${tokenOut.toUpperCase()} vault\n• Connected to the correct network`;
+      }
 
       case 'transfer':
         return `❌ Transfer failed!\n\n${error}\n\nPlease verify:\n• Sufficient balance\n• Valid recipient address\n• Correct network`;
 
       case 'balance':
         return `❌ Could not fetch balance\n\n${error}`;
+
+      case 'price':
+        return `❌ Could not fetch price\n\n${error}\n\nPlease make sure:\n• You're connected to the correct network\n• The trading pair exists on IncrementFi\n• Your wallet is connected`;
+
+      case 'portfolio':
+        return `❌ Could not fetch portfolio\n\n${error}\n\nPlease verify:\n• Your wallet is connected\n• You're on the correct network\n• Your account exists`;
 
       default:
         return `❌ Transaction failed: ${error}`;

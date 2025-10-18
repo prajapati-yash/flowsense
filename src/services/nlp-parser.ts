@@ -7,11 +7,13 @@ export type TransactionType =
   | 'swap'
   | 'transfer'
   | 'balance'
+  | 'price'
+  | 'portfolio'
   | 'unknown';
 
 export interface ParsedIntent {
   type: TransactionType;
-  params: Record<string, any>;
+  params: Record<string, unknown>;
   confidence: number;
   rawInput: string;
 }
@@ -82,6 +84,18 @@ class NLPParser {
     const balanceIntent = this.parseBalance(normalizedInput);
     if (balanceIntent) {
       return { ...balanceIntent, rawInput: input };
+    }
+
+    // Try to parse as price query
+    const priceIntent = this.parsePrice(normalizedInput);
+    if (priceIntent) {
+      return { ...priceIntent, rawInput: input };
+    }
+
+    // Try to parse as portfolio query
+    const portfolioIntent = this.parsePortfolio(normalizedInput);
+    if (portfolioIntent) {
+      return { ...portfolioIntent, rawInput: input };
     }
 
     // Unknown intent
@@ -217,6 +231,111 @@ class NLPParser {
             tokenInfo: TOKEN_MAP[token],
           },
           confidence: 0.85,
+          rawInput: input,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Parse price query command
+   * Examples:
+   * - "what is the price of FLOW"
+   * - "FLOW price in USDC"
+   * - "how much is 1 FLOW in USDC"
+   * - "current price of FLOW"
+   */
+  private parsePrice(input: string): ParsedIntent | null {
+    const patterns = [
+      // "what is the price of FLOW in USDC"
+      /(?:what'?s?|what is)\s+(?:the\s+)?(?:current\s+)?price\s+(?:of\s+)?(\w+)(?:\s+in\s+(\w+))?/i,
+      // "FLOW price in USDC"
+      /(\w+)\s+price(?:\s+in\s+(\w+))?/i,
+      // "how much is FLOW in USDC" or "how much is 1 FLOW"
+      /how\s+much\s+is\s+(?:(\d+\.?\d*)\s+)?(\w+)(?:\s+in\s+(\w+))?/i,
+      // "current price of FLOW"
+      /(?:current|latest)\s+price\s+(?:of\s+)?(\w+)(?:\s+in\s+(\w+))?/i,
+      // "price of FLOW"
+      /price\s+(?:of\s+)?(\w+)(?:\s+in\s+(\w+))?/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = input.match(pattern);
+      if (match) {
+        // Extract tokens based on pattern
+        let amount = '1';
+        let tokenFrom: string;
+        let tokenTo: string | undefined;
+
+        // Different patterns have different capture groups
+        if (pattern.source.includes('how\\s+much')) {
+          // "how much is 10 FLOW in USDC" -> [full, amount, tokenFrom, tokenTo]
+          amount = match[1] || '1';
+          tokenFrom = match[2];
+          tokenTo = match[3];
+        } else {
+          // Other patterns: [full, tokenFrom, tokenTo]
+          tokenFrom = match[1];
+          tokenTo = match[2];
+        }
+
+        const tokenFromNormalized = tokenFrom.toLowerCase();
+        const tokenToNormalized = (tokenTo || 'usdc').toLowerCase(); // Default to USDC
+
+        // Validate tokens
+        if (!TOKEN_MAP[tokenFromNormalized] || !TOKEN_MAP[tokenToNormalized]) {
+          continue;
+        }
+
+        return {
+          type: 'price',
+          params: {
+            amount,
+            tokenFrom: tokenFromNormalized,
+            tokenTo: tokenToNormalized,
+            tokenFromInfo: TOKEN_MAP[tokenFromNormalized],
+            tokenToInfo: TOKEN_MAP[tokenToNormalized],
+          },
+          confidence: 0.85,
+          rawInput: input,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Parse portfolio/holdings query
+   * Examples:
+   * - "show my tokens"
+   * - "what tokens do I have"
+   * - "my portfolio"
+   * - "show my holdings"
+   */
+  private parsePortfolio(input: string): ParsedIntent | null {
+    const patterns = [
+      // "show my tokens" or "show tokens"
+      /(?:show|display|get)\s+(?:my\s+)?(?:tokens|holdings|portfolio|assets)/i,
+      // "what tokens do I have"
+      /what\s+(?:tokens|assets|holdings)\s+(?:do\s+)?(?:i\s+)?have/i,
+      // "my portfolio" or "my holdings"
+      /(?:my|view)\s+(?:portfolio|holdings|tokens|assets)/i,
+      // "list my tokens"
+      /list\s+(?:my\s+)?(?:tokens|holdings|assets)/i,
+      // "portfolio" or "holdings" alone
+      /^(?:portfolio|holdings|tokens|assets)$/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = input.match(pattern);
+      if (match) {
+        return {
+          type: 'portfolio',
+          params: {},
+          confidence: 0.9,
           rawInput: input,
         };
       }
