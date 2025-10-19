@@ -9,6 +9,7 @@ export type TransactionType =
   | 'balance'
   | 'price'
   | 'portfolio'
+  | 'vault_init'
   | 'unknown';
 
 export interface ParsedIntent {

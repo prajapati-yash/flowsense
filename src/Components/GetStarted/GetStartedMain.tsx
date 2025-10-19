@@ -1,18 +1,17 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BiPaperPlane } from "react-icons/bi";
 import logo from "@/app/assets/fs2.png"
 import Image from "next/image";
 import Link from "next/link";
 import { chatAPI, ChatListItem, Message } from "@/services/chat-api";
+import { ParsedIntent } from "@/services/nlp-parser";
 import { useToast } from "@/Components/Toast/ToastProvider";
 import { useWallet } from "@/hooks/useWallet";
 import { useFlowTransaction } from "@/hooks/useFlowTransaction";
 import WalletButton from "@/Components/WalletConnection/WalletButton";
 import NetworkSwitcher from "@/Components/NetworkSwitcher/NetworkSwitcher";
-import { FlowTransactions } from "@/services/flow-transactions";
-import { nlpParser } from "@/services/nlp-parser";
 import { transactionRouter } from "@/services/transaction-router";
 
 const GetStartedMain = () => {
@@ -27,7 +26,7 @@ const GetStartedMain = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { showToast } = useToast();
   const { address, isConnected } = useWallet();
-  const { executeTransaction, executeScript } = useFlowTransaction();
+  const { executeTransaction } = useFlowTransaction();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -37,15 +36,8 @@ const GetStartedMain = () => {
     scrollToBottom();
   }, [currentChatMessages]);
 
-  // Load chats when wallet connects
-  useEffect(() => {
-    if (isConnected && address) {
-      loadChats();
-    }
-  }, [isConnected, address]);
-
   // Load chats from database
-  const loadChats = async () => {
+  const loadChats = useCallback(async () => {
     if (!address) return; // Don't load if wallet not connected
   
     try {
@@ -59,11 +51,19 @@ const GetStartedMain = () => {
     } finally {
       setIsFetchingChats(false);
     }
-  };
+  }, [address]);
+
+  // Load chats when wallet connects
+  useEffect(() => {
+    if (isConnected && address) {
+      loadChats();
+    }
+  }, [isConnected, address, loadChats]);
+
   // Load specific chat with messages
   const loadChat = async (chatId: string) => {
     if (!address) return;
-  
+
     try {
       const chat = await chatAPI.fetchChat(address, chatId);
       setCurrentChatMessages(chat.messages);
@@ -93,12 +93,14 @@ const GetStartedMain = () => {
 
       // Add introduction message to database
       setTimeout(async () => {
-        const supportedTokens = nlpParser.getSupportedTokens();
-        const introMessage = `👋 Welcome to FlowSense!\n\nI can help you interact with the Flow blockchain using natural language. Here are some things you can try:\n\n` +
+        const introMessage = `👋 Welcome to FlowSense AI!\n\n` +
+          `I'm your AI-powered blockchain assistant. I can help you interact with the Flow blockchain using natural language. Here are some things you can try:\n\n` +
           `💱 **Swap tokens**: "swap 10 FLOW to USDC"\n` +
           `💸 **Transfer**: "send 5 FLOW to 0x..."\n` +
-          `💰 **Check balance**: "check my FLOW balance"\n\n` +
-          `Supported tokens: ${supportedTokens.map(t => t.toUpperCase()).join(', ')}\n\n` +
+          `💰 **Check balance**: "what's my FLOW balance?"\n` +
+          `💵 **Get prices**: "how much USDC can I get for 10 FLOW?"\n` +
+          `📊 **View portfolio**: "show me my portfolio"\n\n` +
+          `Supported tokens: FLOW, USDC, USDT\n\n` +
           `Your wallet is connected: ${address}`;
         await addMessageToDB(newChat.id, introMessage, false, 'text');
       }, 500);
@@ -148,65 +150,95 @@ const GetStartedMain = () => {
     }
   };
 
-  // Handle transfer command
-  const handleTransferCommand = async (recipient: string, amount: string) => {
-    if (!isConnected || !address) {
+  // Handle transaction execution when user clicks "Sign Transaction"
+  const handleExecuteTransaction = async (messageId: string) => {
+    if (!address || !isConnected) {
       showToast('Please connect your wallet first', 'warning');
       return;
     }
 
+    const message = currentChatMessages.find(m => m.id === messageId);
+    if (!message || message.type !== 'transaction_preview' || !message.data) {
+      console.error('[handleExecuteTransaction] Invalid message or missing data');
+      return;
+    }
+
+    const messageData = message.data as {
+      intent: ParsedIntent;
+      plan: { cadence: string; args: unknown[]; description: string; estimatedGas: string };
+      status?: string;
+      executedAt?: number;
+    };
+
+    const { intent, plan } = messageData;
+    const chatId = currentChatId;
+    if (!chatId) return;
+
+    // Update status to processing
+    await chatAPI.updateMessage(chatId, messageId, address, {
+      data: {
+        ...messageData,
+        status: 'processing',
+        executedAt: Date.now(),
+      }
+    });
+
     try {
-      // Create or get chat
-      let chatId = currentChatId;
-      if (!chatId) {
-        const newChat = await chatAPI.createChat(address, 'Transfer Transaction');
-        setChats((prev) => [newChat, ...prev]);
-        setCurrentChatId(newChat.id);
-        chatId = newChat.id;
-      }
-
-      // Add user message
-      await addMessageToDB(
-        chatId,
-        `Transfer ${amount} FLOW to ${recipient}`,
-        true,
-        'text'
-      );
-
-      // Add processing message
-      await addMessageToDB(
-        chatId,
-        'Processing transaction...',
-        false,
-        'text'
-      );
-
       // Execute transaction
-      const tx = FlowTransactions.transferFlow({ recipient, amount });
-      const result = await executeTransaction(tx.cadence, tx.args);
+      const result = await executeTransaction(plan.cadence, plan.args);
 
-      if (result.success) {
-        await addMessageToDB(
-          chatId,
-          `✅ Transaction successful!\nTransaction ID: ${result.transactionId}`,
-          false,
-          'transaction_result',
-          { transactionId: result.transactionId }
+      // Update message status based on result
+      if (result.success && 'transactionId' in result) {
+        // Success - update to completed
+        await chatAPI.updateMessage(chatId, messageId, address, {
+          data: {
+            ...messageData,
+            status: 'success',
+            transactionId: result.transactionId,
+          }
+        });
+
+        const successMessage = transactionRouter.formatTransactionResult(
+          intent,
+          result.transactionId
         );
-      } else {
-        await addMessageToDB(
-          chatId,
-          `❌ Transaction failed: ${result.error}`,
-          false,
-          'error'
-        );
+        await addMessageToDB(chatId, successMessage, false, 'transaction_result', {
+          transactionId: result.transactionId,
+        });
+        showToast('Transaction successful!', 'success');
+      } else if (!result.success && 'error' in result) {
+        // Failed - update to failed so user can retry
+        await chatAPI.updateMessage(chatId, messageId, address, {
+          data: {
+            ...messageData,
+            status: 'failed',
+            error: result.error,
+          }
+        });
+
+        const errorMessage = transactionRouter.formatError(intent, result.error || 'Unknown error');
+        await addMessageToDB(chatId, errorMessage, false, 'error');
+        showToast('Transaction failed', 'error');
       }
-    } catch (error) {
-      console.error('[handleTransferCommand] Error:', error);
-      showToast(
-        error instanceof Error ? error.message : 'Transaction failed',
+    } catch (txError) {
+      console.error('[handleExecuteTransaction] Transaction error:', txError);
+
+      // Update to failed on error
+      await chatAPI.updateMessage(chatId, messageId, address, {
+        data: {
+          ...messageData,
+          status: 'failed',
+          error: txError instanceof Error ? txError.message : 'Unknown error',
+        }
+      });
+
+      await addMessageToDB(
+        chatId,
+        `❌ Transaction failed: ${txError instanceof Error ? txError.message : 'Unknown error'}`,
+        false,
         'error'
       );
+      showToast('Transaction failed', 'error');
     }
   };
 
@@ -235,110 +267,65 @@ const GetStartedMain = () => {
       }
     }
 
-    // Parse intent FIRST (synchronous, before any async operations)
-    const intent = nlpParser.parse(userInput);
-
     // Clear input immediately
     setInputText("");
     setIsLoading(true);
 
-    // Handle unknown intent (no transaction needed)
-    if (intent.type === 'unknown') {
-      try {
-        await addMessageToDB(chatId, userInput, true, 'text');
-
-        const supportedTokens = nlpParser.getSupportedTokens();
-        const helpMessage = `I didn't understand that command. Here's what I can help you with:\n\n` +
-          `💱 **Swap tokens**: "swap 10 FLOW to USDC"\n` +
-          `💸 **Transfer**: "send 5 FLOW to 0x..."\n` +
-          `💰 **Check balance**: "check my FLOW balance"\n\n` +
-          `Supported tokens: ${supportedTokens.map(t => t.toUpperCase()).join(', ')}`;
-
-        await addMessageToDB(chatId, helpMessage, false, 'text');
-      } catch (error) {
-        console.error('[handleSendMessage] Error:', error);
-      }
-      setIsLoading(false);
-      return;
-    }
-
-    // Create transaction/script plan (synchronous)
-    const plan = transactionRouter.routeToTransaction(intent, address!);
-
-    if (!plan) {
-      try {
-        await addMessageToDB(chatId, userInput, true, 'text');
-        await addMessageToDB(
-          chatId,
-          `Sorry, I couldn't create a transaction plan for: ${intent.type}`,
-          false,
-          'error'
-        );
-      } catch (error) {
-        console.error('[handleSendMessage] Error:', error);
-      }
-      setIsLoading(false);
-      return;
-    }
-
-    // CRITICAL: Execute transaction IMMEDIATELY (no async operations before this)
-    // This preserves the user gesture chain for wallet popup
     try {
-      let result;
+      // Add user message to database
+      await addMessageToDB(chatId, userInput, true, 'text');
 
-      if ('estimatedGas' in plan) {
-        // It's a transaction - execute immediately
-        result = await executeTransaction(plan.cadence, plan.args);
-      } else {
-        // It's a script (read-only)
-        result = await executeScript(plan.cadence, plan.args);
-      }
+      // Process message with AI agent
+      console.log('[handleSendMessage] Processing with AI agent...');
+      // Pass chatId so agent can load previous messages from database
+      const agentResult = await chatAPI.processMessage(
+        address,
+        userInput,
+        chatId
+      );
 
-      // NOW save messages to database (after transaction is approved)
-      try {
-        // Add user message
-        await addMessageToDB(chatId, userInput, true, 'text');
+      console.log('[handleSendMessage] Agent result:', agentResult.intent.type);
 
-        // Add result message
-        if ('estimatedGas' in plan) {
-          // Transaction result
-          if (result.success && 'transactionId' in result) {
-            const successMessage = transactionRouter.formatTransactionResult(
-              intent,
-              result.transactionId
-            );
-            await addMessageToDB(chatId, successMessage, false, 'transaction_result', {
-              transactionId: result.transactionId,
-            });
-          } else if (!result.success && 'error' in result) {
-            const errorMessage = transactionRouter.formatError(intent, result.error || 'Unknown error');
-            await addMessageToDB(chatId, errorMessage, false, 'error');
-          }
-        } else {
-          // Script result
-          if (result.success && 'result' in result) {
-            const resultMessage = transactionRouter.formatScriptResult(intent, result.result);
-            await addMessageToDB(chatId, resultMessage, false, 'text');
-          } else if (!result.success && 'error' in result) {
-            const errorMessage = transactionRouter.formatError(intent, result.error || 'Unknown error');
-            await addMessageToDB(chatId, errorMessage, false, 'error');
-          }
+      // Add AI response to database
+      await addMessageToDB(chatId, agentResult.response, false, 'text');
+
+      // Handle intent for transactions
+      const intent = agentResult.intent;
+
+      // If intent is swap, transfer, or vault_init, prepare transaction for signing
+      if (intent.type === 'swap' || intent.type === 'transfer' || intent.type === 'vault_init') {
+        // Create transaction plan
+        const plan = transactionRouter.routeToTransaction(intent, address);
+
+        if (plan && 'estimatedGas' in plan) {
+          // Create transaction preview message with sign button
+          const previewMessage = `📝 **Transaction Ready**\n\n${plan.description}\n\n⛽ Estimated Gas: ${plan.estimatedGas}\n\n👇 Click the button below to sign the transaction with your wallet.`;
+
+          await addMessageToDB(chatId, previewMessage, false, 'transaction_preview', {
+            intent,
+            plan,
+          });
         }
-      } catch (dbError) {
-        console.error('[handleSendMessage] Database error:', dbError);
-        // Transaction succeeded but DB save failed - not critical
       }
 
     } catch (error: unknown) {
-      console.error('[handleSendMessage] Transaction error:', error);
+      console.error('[handleSendMessage] Error:', error);
+
+      // Handle specific error types
+      let errorMessage = 'Sorry, I encountered an error processing your request.';
+
+      if (error instanceof Error) {
+        if (error.message.includes('API key')) {
+          errorMessage = 'AI service is not configured. Please contact support.';
+        } else if (error.message.includes('rate limit')) {
+          errorMessage = 'Too many requests. Please wait a moment and try again.';
+        } else {
+          errorMessage = `❌ Error: ${error.message}`;
+        }
+      }
+
       try {
-        await addMessageToDB(chatId, userInput, true, 'text');
-        await addMessageToDB(
-          chatId,
-          `❌ Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          false,
-          'error'
-        );
+        await addMessageToDB(chatId, errorMessage, false, 'error');
       } catch (dbError) {
         console.error('[handleSendMessage] Database error:', dbError);
       }
@@ -480,6 +467,57 @@ const GetStartedMain = () => {
                         <div className="font-rubik text-base leading-relaxed whitespace-pre-wrap">
                           {message.text}
                         </div>
+
+                        {/* Show Sign Transaction button for transaction previews */}
+                        {message.type === 'transaction_preview' && !!message.data && (() => {
+                          const txData = message.data as { status?: string; createdAt?: number; executedAt?: number };
+                          let status = txData.status || 'ready';
+                          const createdAt = message.timestamp ? new Date(message.timestamp).getTime() : Date.now();
+                          const executedAt = txData.executedAt || Date.now();
+                          const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+                          const threeMinutesAgo = Date.now() - (3 * 60 * 1000);
+                          const isExpired = createdAt < tenMinutesAgo && status !== 'success';
+
+                          // If processing for more than 3 minutes, treat as failed (user can retry)
+                          if (status === 'processing' && executedAt < threeMinutesAgo) {
+                            status = 'failed';
+                          }
+
+                          let buttonText = '✍️ Sign Transaction';
+                          let buttonDisabled = false;
+                          let buttonClass = 'px-6 py-3 bg-gradient-to-r from-[#00ef8b] to-[#00c770] text-black font-semibold rounded-lg hover:shadow-lg hover:shadow-[#00ef8b]/50 transition-all duration-300';
+
+                          if (isExpired) {
+                            buttonText = '⏱️ Transaction Expired';
+                            buttonDisabled = true;
+                            buttonClass = 'px-6 py-3 bg-gray-600 text-gray-300 font-semibold rounded-lg cursor-not-allowed';
+                          } else if (status === 'processing') {
+                            buttonText = '⏳ Processing...';
+                            buttonDisabled = true;
+                            buttonClass = 'px-6 py-3 bg-yellow-600 text-white font-semibold rounded-lg cursor-not-allowed';
+                          } else if (status === 'success') {
+                            buttonText = '✅ Transaction Completed';
+                            buttonDisabled = true;
+                            buttonClass = 'px-6 py-3 bg-green-600 text-white font-semibold rounded-lg cursor-not-allowed';
+                          } else if (status === 'failed') {
+                            buttonText = '🔄 Retry Transaction';
+                            buttonDisabled = false;
+                            buttonClass = 'px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-orange-500/50 transition-all duration-300';
+                          }
+
+                          return (
+                            <div className="mt-4">
+                              <button
+                                onClick={() => handleExecuteTransaction(message.id)}
+                                disabled={buttonDisabled}
+                                className={buttonClass}
+                              >
+                                {buttonText}
+                              </button>
+                            </div>
+                          );
+                        })()}
+
                         <div className="text-xs mt-2 text-white/50">
                           {new Date(message.timestamp).toLocaleTimeString()}
                         </div>
@@ -505,7 +543,7 @@ const GetStartedMain = () => {
                 </h3>
                 <p className="text-white/70 font-rubik max-w-md">
                   {isConnected
-                    ? `Start a conversation by typing your message below. Try "swap 10 FLOW to USDC" or "check my balance"`
+                    ? `Start a conversation by typing your message below. Try "swap 10 FLOW to USDC", "what's my balance?", or "show me my portfolio"`
                     : "Connect your wallet to start interacting with the Flow blockchain"}
                 </p>
               </div>

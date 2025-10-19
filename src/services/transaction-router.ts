@@ -169,6 +169,94 @@ transaction(recipient: Address, amount: UFix64) {
 `;
 
 /**
+ * Initialize stgUSDC vault (Stargate bridged USDC from EVM)
+ * Required before receiving stgUSDC from swaps
+ */
+const SETUP_STG_USDC_VAULT = `
+import FungibleToken from 0xf233dcee88fe0abe
+import EVMVMBridgedToken_f1815bd50389c46847f0bda824ec8da914045d14 from 0x1e4aa0b87d10b141
+
+transaction() {
+    prepare(signer: auth(Storage, Capabilities) &Account) {
+        let storagePath = StoragePath(identifier: "EVMVMBridgedToken_f1815bd50389c46847f0bda824ec8da914045d14Vault")!
+        let receiverPath = PublicPath(identifier: "EVMVMBridgedToken_f1815bd50389c46847f0bda824ec8da914045d14Receiver")!
+        let balancePath = PublicPath(identifier: "EVMVMBridgedToken_f1815bd50389c46847f0bda824ec8da914045d14Balance")!
+
+        // Check if vault already exists
+        if signer.storage.borrow<&AnyResource>(from: storagePath) != nil {
+            log("✅ stgUSDC vault already exists - no setup needed")
+            return
+        }
+
+        log("Creating new stgUSDC vault...")
+
+        // Create new vault using the specific bridged token contract
+        let vault <- EVMVMBridgedToken_f1815bd50389c46847f0bda824ec8da914045d14.createEmptyVault(
+            vaultType: Type<@EVMVMBridgedToken_f1815bd50389c46847f0bda824ec8da914045d14.Vault>()
+        )
+
+        // Save it to storage
+        signer.storage.save(<-vault, to: storagePath)
+
+        // Create public receiver capability
+        let receiverCap = signer.capabilities.storage.issue<&{FungibleToken.Receiver}>(storagePath)
+        signer.capabilities.publish(receiverCap, at: receiverPath)
+
+        // Create public balance capability
+        let balanceCap = signer.capabilities.storage.issue<&{FungibleToken.Balance}>(storagePath)
+        signer.capabilities.publish(balanceCap, at: balancePath)
+
+        log("✅ stgUSDC vault created successfully!")
+        log("You can now receive stgUSDC from swaps")
+    }
+}
+`;
+
+/**
+ * Initialize stgUSDT vault (Stargate bridged USDT from EVM)
+ * Required before receiving stgUSDT from swaps
+ */
+const SETUP_STG_USDT_VAULT = `
+import FungibleToken from 0xf233dcee88fe0abe
+import EVMVMBridgedToken_674843c06ff83502ddb4d37c2e09c01cda38cbc8 from 0x1e4aa0b87d10b141
+
+transaction() {
+    prepare(signer: auth(Storage, Capabilities) &Account) {
+        let storagePath = StoragePath(identifier: "EVMVMBridgedToken_674843c06ff83502ddb4d37c2e09c01cda38cbc8Vault")!
+        let receiverPath = PublicPath(identifier: "EVMVMBridgedToken_674843c06ff83502ddb4d37c2e09c01cda38cbc8Receiver")!
+        let balancePath = PublicPath(identifier: "EVMVMBridgedToken_674843c06ff83502ddb4d37c2e09c01cda38cbc8Balance")!
+
+        // Check if vault already exists
+        if signer.storage.borrow<&AnyResource>(from: storagePath) != nil {
+            log("✅ stgUSDT vault already exists - no setup needed")
+            return
+        }
+
+        log("Creating new stgUSDT vault...")
+
+        // Create new vault using the specific bridged token contract
+        let vault <- EVMVMBridgedToken_674843c06ff83502ddb4d37c2e09c01cda38cbc8.createEmptyVault(
+            vaultType: Type<@EVMVMBridgedToken_674843c06ff83502ddb4d37c2e09c01cda38cbc8.Vault>()
+        )
+
+        // Save it to storage
+        signer.storage.save(<-vault, to: storagePath)
+
+        // Create public receiver capability
+        let receiverCap = signer.capabilities.storage.issue<&{FungibleToken.Receiver}>(storagePath)
+        signer.capabilities.publish(receiverCap, at: receiverPath)
+
+        // Create public balance capability
+        let balanceCap = signer.capabilities.storage.issue<&{FungibleToken.Balance}>(storagePath)
+        signer.capabilities.publish(balanceCap, at: balancePath)
+
+        log("✅ stgUSDT vault created successfully!")
+        log("You can now receive stgUSDT from swaps")
+    }
+}
+`;
+
+/**
  * Get FLOW balance
  * Updated for Cadence 1.0+
  */
@@ -437,6 +525,9 @@ class TransactionRouter {
       case 'portfolio':
         return this.createPortfolioScript(intent, userAddress);
 
+      case 'vault_init':
+        return this.createVaultInitTransaction(intent);
+
       default:
         return null;
     }
@@ -507,6 +598,37 @@ class TransactionRouter {
 
     // For other tokens, would need specific transfer transaction
     throw new Error(`Transfer for ${token.toUpperCase()} not yet implemented`);
+  }
+
+  /**
+   * Create vault initialization transaction
+   */
+  private createVaultInitTransaction(intent: ParsedIntent): TransactionPlan {
+    const { token } = intent.params as {
+      token: string;
+    };
+
+    const tokenUpper = token.toUpperCase();
+
+    if (token === 'usdc') {
+      return {
+        cadence: SETUP_STG_USDC_VAULT,
+        args: [],
+        description: `Initialize ${tokenUpper} vault`,
+        estimatedGas: "0.0001 FLOW",
+      };
+    }
+
+    if (token === 'usdt') {
+      return {
+        cadence: SETUP_STG_USDT_VAULT,
+        args: [],
+        description: `Initialize ${tokenUpper} vault`,
+        estimatedGas: "0.0001 FLOW",
+      };
+    }
+
+    throw new Error(`Vault initialization for ${tokenUpper} not supported`);
   }
 
   /**
@@ -598,6 +720,13 @@ class TransactionRouter {
         return `✅ Transfer successful!\n\nTransferred ${amount} ${token.toUpperCase()} to ${recipient}\n\nTransaction ID: ${transactionId}\n\nView on FlowScan: https://flowscan.org/transaction/${transactionId}`;
       }
 
+      case 'vault_init': {
+        const { token } = intent.params as {
+          token: string;
+        };
+        return `✅ Vault initialized successfully!\n\n${token.toUpperCase()} vault is now ready to receive tokens.\n\nYou can now:\n• Swap tokens to ${token.toUpperCase()}\n• Receive ${token.toUpperCase()} from others\n\nTransaction ID: ${transactionId}\n\nView on FlowScan: https://flowscan.org/transaction/${transactionId}`;
+      }
+
       default:
         return `✅ Transaction successful!\n\nTransaction ID: ${transactionId}`;
     }
@@ -673,6 +802,13 @@ class TransactionRouter {
 
       case 'portfolio':
         return `❌ Could not fetch portfolio\n\n${error}\n\nPlease verify:\n• Your wallet is connected\n• You're on the correct network\n• Your account exists`;
+
+      case 'vault_init': {
+        const { token } = intent.params as {
+          token: string;
+        };
+        return `❌ Vault initialization failed!\n\n${error}\n\nThis could mean:\n• The vault might already be initialized\n• Insufficient FLOW for transaction fees\n• Network connection issue\n\nTry asking "What's my ${token.toUpperCase()} balance?" to verify if the vault already exists.`;
+      }
 
       default:
         return `❌ Transaction failed: ${error}`;

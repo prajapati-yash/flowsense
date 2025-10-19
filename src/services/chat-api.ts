@@ -4,6 +4,15 @@
  * Requires wallet address for authenticated requests
  */
 
+import { ParsedIntent } from './nlp-parser';
+
+// Agent types
+interface ToolCall {
+  tool: string;
+  params: Record<string, unknown>;
+  result: unknown;
+}
+
 export interface Message {
   id: string;
   text: string;
@@ -170,6 +179,72 @@ class ChatAPIService {
       };
     } catch (error) {
       console.error('[ChatAPI] Add message failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update message
+   */
+  async updateMessage(
+    chatId: string,
+    messageId: string,
+    walletAddress: string,
+    updates: { text?: string; data?: unknown }
+  ): Promise<Message> {
+    try {
+      const response = await this.authenticatedFetch(
+        `/api/chats/${chatId}/messages/${messageId}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(updates),
+        },
+        walletAddress
+      );
+
+      const responseData = await response.json();
+
+      if (!responseData.success) {
+        throw new Error(responseData.error || 'Failed to update message');
+      }
+
+      return {
+        ...responseData.message,
+        timestamp: new Date(responseData.message.timestamp)
+      };
+    } catch (error) {
+      console.error('[ChatAPI] Update message failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process message with AI agent
+   */
+  async processMessage(
+    walletAddress: string,
+    message: string,
+    chatId?: string
+  ): Promise<{
+    intent: ParsedIntent;
+    response: string;
+    toolCalls?: ToolCall[];
+  }> {
+    try {
+      const response = await this.authenticatedFetch('/api/agent/process', {
+        method: 'POST',
+        body: JSON.stringify({ message, chatId }),
+      }, walletAddress);
+
+      const responseData = await response.json();
+
+      if (!responseData.success) {
+        throw new Error(responseData.error || 'Failed to process message');
+      }
+
+      return responseData.data;
+    } catch (error) {
+      console.error('[ChatAPI] Process message failed:', error);
       throw error;
     }
   }
