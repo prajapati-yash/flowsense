@@ -4,7 +4,7 @@ import { RiTwitterXLine } from "react-icons/ri";
 
 const Footer = () => {
   return (
-    <footer className="relative w-full h-[60vh] bg-black overflow-hidden flex flex-col justify-between text-white">
+    <footer className="relative w-full h-[30vh] bg-black overflow-hidden flex flex-col justify-between text-white">
       {/* Grid Background with top fade */}
       <div className="absolute inset-0">
         <div

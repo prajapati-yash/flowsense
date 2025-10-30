@@ -70,9 +70,9 @@ const KeywordTile: React.FC<KeywordTileProps> = ({
         y: scatterY,
         rotate: rotation,
       }}
-      className={` uppercase w-44 px-8 py-12 rounded-lg overflow-hidden
+      className={` uppercase w-32 sm:w-36 md:w-40 lg:w-44 px-4 sm:px-6 md:px-8 py-8 sm:py-10 md:py-12 rounded-lg overflow-hidden
                          bg-white/10 backdrop-blur-md border border-[#00ef8b]/20
-                         text-white font-medium text-lg
+                         text-white font-medium text-sm sm:text-base md:text-lg
                          shadow-2xl transform transition-transform duration-300 hover:scale-105
                   ${className}`}
       // Custom shadow style to mimic the 3D-lifted, blurred look
@@ -90,38 +90,36 @@ const HeroPage = () => {
   const { scrollY } = useScroll();
 
   const tiles = [
-    { text: "Automation", className: "absolute top-0 left-64 text-sm" },
-    { text: "Intent", className: "absolute top-16 left-28 text-sm" },
-    { text: "Scheduled", className: "absolute top-20 left-96 text-sm" },
-    { text: "DeFi", className: "absolute top-36 right-60 text-sm" },
-    { text: "Natural", className: "absolute top-60 left-96 text-sm" },
-    { text: "Actions", className: "absolute top-80 right-40 text-sm" },
-    { text: "Flow", className: "absolute bottom-6 left-44 text-sm" },
+    { text: "Automation", className: "absolute top-0 left-8 sm:left-32 md:left-48 lg:left-64" },
+    { text: "Intent", className: "absolute top-12 sm:top-16 left-4 sm:left-16 md:left-20 lg:left-28" },
+    { text: "Scheduled", className: "absolute top-16 sm:top-20 left-32 sm:left-56 md:left-72 lg:left-96" },
+    { text: "DeFi", className: "absolute top-24 sm:top-36 right-20 sm:right-32 md:right-48 lg:right-60" },
+    { text: "Natural", className: "absolute top-44 sm:top-60 left-32 sm:left-56 md:left-72 lg:left-96" },
+    { text: "Actions", className: "absolute top-60 sm:top-80 right-16 sm:right-24 md:right-32 lg:right-40" },
+    { text: "Flow", className: "absolute bottom-4 sm:bottom-6 left-20 sm:left-32 md:left-36 lg:left-44" },
     {
       text: "Discovery",
       className:
-        "absolute top-44 right-4 text-sm w-12 h-12 flex items-center justify-center",
+        "absolute top-32 sm:top-44 right-2 sm:right-4",
     },
   ];
 
   return (
     <div
       ref={containerRef}
-      className="overflow-hidden bg-black relative h-screen w-full flex items-center justify-between p-8 md:p-16 lg:p-24"
+      className="overflow-hidden bg-black relative min-h-screen w-full flex items-center justify-center p-4 sm:p-6 md:p-12 lg:p-16 xl:p-24"
     >
-      {/* <Image src={logo} alt="" className=" w-48 top-10 absolute " /> */}
+      {/* Background Gradient Blurs - Responsive sizing */}
+      <div className="absolute top-[10%] left-[2%] w-[150px] h-[150px] sm:w-[200px] sm:h-[200px] md:w-[250px] md:h-[250px] bg-[#00ef8b]/40 blur-3xl opacity-100 rounded-full z-0" />
+      <div className="absolute bottom-[10%] right-[4%] w-[120px] h-[120px] sm:w-[150px] sm:h-[150px] md:w-[200px] md:h-[200px] bg-[#00ef8b]/60 blur-3xl opacity-100 rounded-full z-0" />
+      <div className="absolute bottom-[50%] right-[28%] w-[100px] h-[100px] sm:w-[120px] sm:h-[120px] md:w-[150px] md:h-[150px] bg-[#00ef8b]/50 blur-3xl opacity-100 rounded-full z-0" />
 
-      <div className="absolute top-[10%] left-[2%] w-[250px] h-[250px] bg-[#00ef8b]/40 blur-3xl opacity-100 rounded-full z-0" />
-      <div className="absolute bottom-[10%] right-[4%] w-[200px] h-[200px] bg-[#00ef8b]/60 blur-3xl opacity-100 rounded-full z-0" />
-      <div className="absolute bottom-[50%] right-[28%] w-[150px] h-[150px] bg-[#00ef8b]/50 blur-3xl opacity-100 rounded-full z-0" />
-      <div className="flex items-center justify-between w-full gap-12">
-        {/* Content Container - Aligned to the left */}
-        <div className="relative flex-1 text-white">
-          {" "}
-          {/* max-w-2xl to control text width */}
-          {/* White backdrop blur bg */}
+      <div className="flex flex-col lg:flex-row items-center justify-between w-full gap-8 sm:gap-12 lg:gap-16 max-w-7xl mx-auto">
+        {/* Content Container - Centered on mobile, left-aligned on desktop */}
+        <div className="relative flex-1 text-white text-center lg:text-left z-10">
+          {/* Heading */}
           <h2
-            className="font-viga uppercase font-semibold text-3xl md:text-4xl lg:text-6xl leading-tight mb-4 bg-clip-text text-transparent"
+            className="font-viga uppercase font-semibold text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl leading-tight mb-4 sm:mb-6 bg-clip-text text-transparent"
             style={{
               backgroundImage: "linear-gradient(to right, #ffffff, #00ef8b)",
             }}
@@ -129,29 +127,32 @@ const HeroPage = () => {
             One Sentence. <br />
             Atomic Execution.
           </h2>
-          <p className="text-white/90 max-w-3xl font-rubik text-base md:text-xl leading-relaxed mb-8">
+
+          {/* Description */}
+          <p className="text-white/90 max-w-3xl font-rubik text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed mb-6 sm:mb-8 mx-auto lg:mx-0">
             The FlowSense Platform transforms natural language commands
             into seamless, secure, atomic blockchain transactions.
           </p>
+
           {/* Buttons Container */}
-          <div className="flex font-viga flex-col sm:flex-row gap-4">
-            {/* Button 1: Get Started */}
+          <div className="flex font-viga flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+            {/* Button: Get Started */}
             <Link
               href="/get-started"
-              className="cursor-pointer relative uppercase px-8 py-3 rounded-lg overflow-hidden
+              className="cursor-pointer relative uppercase px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg overflow-hidden
                          bg-gradient-to-r from-white to-[#00ef8b] backdrop-blur-md border border-[#00ef8b]/20
-                          text-black/80 font-medium text-lg
+                         text-black/80 font-medium text-base sm:text-lg
                          shadow-2xl transform transition-transform duration-300 hover:scale-105"
             >
               Get Started
-              {/* Optional: Add a subtle overlay for a 'glass' effect if desired */}
+              {/* Subtle overlay for glass effect */}
               <span className="absolute inset-0 border border-white/20 rounded-lg opacity-0 hover:opacity-100 transition-opacity duration-300"></span>
             </Link>
           </div>
         </div>
 
-        {/* Keyword Tiles - Right Side Scattered */}
-        <div className="relative z-10 hiddeny-hidden overflow- lg:block flex-1 text-center h-96">
+        {/* Keyword Tiles - Hidden on mobile/tablet, visible on large screens */}
+        <div className="relative z-10 hidden lg:block flex-1 text-center h-96 w-full">
           {tiles.map((tile, index) => (
             <KeywordTile
               key={tile.text}
@@ -164,8 +165,10 @@ const HeroPage = () => {
         </div>
       </div>
 
-      {/* 3D Floating Wallet Circle */}
-      <FloatingWalletCircle />
+      {/* 3D Floating Wallet Circle - Hidden on very small screens */}
+      <div className="hidden sm:block">
+        <FloatingWalletCircle />
+      </div>
     </div>
   );
 };
