@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import {  Rubik, Rubik_Mono_One, Bricolage_Grotesque, Viga   } from "next/font/google";
 import "./globals.css";
-import FlowProvider from "@/Components/Providers/FlowProvider";
 import ToastProvider from "@/Components/Toast/ToastProvider";
+import FlowProvider from "@/Components/Providers/FlowProvider";
 // import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 
 const rubik = Rubik({
@@ -47,12 +47,6 @@ export default function RootLayout({
         <FlowProvider>
           <ToastProvider>
             {children}
-        {/* <ProgressBar
-        height="4px"
-        color="#00ef8b"
-        options={{ showSpinner: false }}
-        shallowRouting
-      /> */}
           </ToastProvider>
         </FlowProvider>
       </body>

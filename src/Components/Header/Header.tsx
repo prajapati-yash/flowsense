@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import WalletConnectionWrapper from '@/Components/WalletConnection/WalletConnectionWrapper'
+import WalletButton from '@/Components/WalletConnection/WalletButton'
 import NetworkSwitcher from '@/Components/NetworkSwitcher/NetworkSwitcher'
 import Image from 'next/image'
 import logo from "@/app/assets/fs.png"
@@ -41,13 +41,13 @@ export default function Header({ className = '' }: HeaderProps) {
 
           {/* Desktop Wallet Controls */}
           <div className="hidden sm:flex items-center gap-2 md:gap-3 lg:gap-4">
-            <NetworkSwitcher className="wallet-controls-network" />
-            <WalletConnectionWrapper className="wallet-controls-connection" />
+            <NetworkSwitcher />
+            <WalletButton />
           </div>
 
           {/* Mobile Menu Toggle */}
           <button
-            className="sm:hidden cursor-pointer p-2 rounded-lg hover:bg-gray-100/10 transition-colors relative z-[60]"
+            className="cursor-pointer sm:hidden p-2 rounded-lg hover:bg-gray-100/10 transition-colors relative z-[60]"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Toggle menu"
           >
@@ -129,7 +129,7 @@ export default function Header({ className = '' }: HeaderProps) {
                 <h3 className="text-[#00ef8b] font-rubik font-semibold text-sm uppercase mb-3 tracking-wider">
                   Network
                 </h3>
-                <NetworkSwitcher className="wallet-controls-network w-full" />
+                <NetworkSwitcher />
               </div>
             </div>
 
@@ -146,14 +146,14 @@ export default function Header({ className = '' }: HeaderProps) {
                 <h3 className="text-[#00ef8b] font-rubik font-semibold text-sm uppercase mb-3 tracking-wider">
                   Wallet
                 </h3>
-                <WalletConnectionWrapper className="wallet-controls-connection w-full" />
+                <WalletButton />
               </div>
             </div>
           </div>
 
           {/* Decorative Elements */}
-          {/* <div className="absolute top-[15%] right-[10%] w-32 h-32 z-100 bg-[#00ef8b]/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-[20%] left-[10%] w-40 h-40 bg-[#00ef8b]/10 rounded-full blur-3xl" /> */}
+          <div className="absolute top-[15%] right-[10%] w-32 h-32 bg-[#00ef8b]/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-[20%] left-[10%] w-40 h-40 bg-[#00ef8b]/10 rounded-full blur-3xl" />
 
           {/* Close hint text */}
           {/* <div

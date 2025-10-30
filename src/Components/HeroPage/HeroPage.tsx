@@ -2,7 +2,7 @@
 import React, { useRef } from "react";
 import { motion, MotionValue, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
-import FloatingWalletCircle from "@/Components/3DCircle/FloatingWalletCircle";
+// import FloatingWalletCircle from "@/Components/3DCircle/FloatingWalletCircle";
 
 interface KeywordTileProps {
   text: string;
@@ -116,7 +116,7 @@ const HeroPage = () => {
 
       <div className="flex flex-col lg:flex-row items-center justify-between w-full gap-8 sm:gap-12 lg:gap-16 max-w-7xl mx-auto">
         {/* Content Container - Centered on mobile, left-aligned on desktop */}
-        <div className="relative flex-1 text-white text-center lg:text-left z-10">
+        <div className="relative flex-1 text-white text-center lg:text-left z-10 w-full lg:w-auto">
           {/* Heading */}
           <h2
             className="font-viga uppercase font-semibold text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl leading-tight mb-4 sm:mb-6 bg-clip-text text-transparent"
@@ -151,23 +151,34 @@ const HeroPage = () => {
           </div>
         </div>
 
-        {/* Keyword Tiles - Hidden on mobile/tablet, visible on large screens */}
-        <div className="relative z-10 hidden lg:block flex-1 text-center h-96 w-full">
-          {tiles.map((tile, index) => (
-            <KeywordTile
-              key={tile.text}
-              text={tile.text}
-              className={tile.className}
-              scrollY={scrollY}
-              index={index}
-            />
-          ))}
-        </div>
-      </div>
+        {/* Keyword Tiles - Stacked on mobile (flex-col), absolute positioning on large screens */}
+        <div className="relative z-10 flex-1 w-full lg:w-auto">
+          {/* Mobile/Tablet: Flex column layout */}
+          {/* <div className="flex flex-col items-center gap-4 lg:hidden">
+            {tiles.map((tile, index) => (
+              <KeywordTile
+                key={tile.text}
+                text={tile.text}
+                className=""
+                scrollY={scrollY}
+                index={index}
+              />
+            ))}
+          </div> */}
 
-      {/* 3D Floating Wallet Circle - Hidden on very small screens */}
-      <div className="hidden sm:block">
-        <FloatingWalletCircle />
+          {/* Desktop: Absolute positioning with scatter effect */}
+          <div className="hidden lg:block relative text-center h-96 w-full">
+            {tiles.map((tile, index) => (
+              <KeywordTile
+                key={tile.text}
+                text={tile.text}
+                className={tile.className}
+                scrollY={scrollY}
+                index={index}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
