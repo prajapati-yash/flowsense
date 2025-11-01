@@ -9,14 +9,18 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@onflow/fcl": "^1.20.1",
+    "@onflow/fcl": "^1.20.2",
     "@onflow/react-sdk": "^0.10.2",
     "@onflow/types": "^1.4.2",
     "framer-motion": "^12.23.22",
+    "mongodb": "^6.20.0",
+    "mongoose": "^8.19.1",
     "next": "15.5.4",
+    "openai": "^6.5.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-icons": "^5.5.0"
+    "react-icons": "^5.5.0",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -2,7 +2,9 @@
 
 🚀 **One Sentence. Atomic Execution.**
 
-FlowSense is an AI-driven blockchain platform built natively for the Flow ecosystem, bridging natural language interaction with automated cryptocurrency operations. Transform complex Flow DeFi workflows into simple human expressions like *"Send 100 FLOW to Alice tomorrow"* or *"Use my claimed rewards to buy and stake more tokens"*.
+**🌐 Live Platform: [https://flowsense-mvp.vercel.app](https://flowsense-mvp.vercel.app)**
+
+FlowSense is an AI-driven blockchain platform built natively for the Flow ecosystem, bridging natural language interaction with automated cryptocurrency operations. Transform complex Flow DeFi workflows into simple human expressions like *"Send 100 FLOW to Alice tomorrow at 10:00 PM"* or *"Use my claimed rewards to buy and stake more tokens"*.
 
 ## 🎯 What FlowSense Achieves
 
@@ -144,6 +146,7 @@ const txId = await fcl.mutate({
 ### Testnet Deployment ✅
 - **Contract Address**: `0x9c23faae746705fe`
 - **Network**: Flow Testnet
+- **Block Explorer**: [View on FlowScan](https://testnet.flowscan.io/account/0x9c23faae746705fe)
 - **Status**: Fully deployed and tested
 - **Transactions Executed**: 4+ successful test transfers
 
